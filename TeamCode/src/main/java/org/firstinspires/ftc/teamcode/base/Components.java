@@ -300,6 +300,7 @@ public abstract class Components {
             return new InstantAction(()->this.switchControl(controlKey));
         }
     }
+    //Each of the subclasses of Actuator will have some generic constructors and some constructors where information is preset.
     public abstract static class CRActuator<E extends DcMotorSimple> extends Actuator<E>{ //Type of Actuator that works for continuous rotation parts, like DcMotorEx and CRServo
         HashMap<String,Double> powers; //Stores the powers each of the parts are set to. Synchronized parts can have different powers because the load on one may be larger than on the other
         ReturningFunc<Double> maxPowerFunc;
@@ -320,6 +321,9 @@ public abstract class Components {
         public CRActuator(String name, Class<E> type, String[] names, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, double errorTol, double defaultTimeout, String[] keyPositionKeys, double[] keyPositionValues,
                           DcMotorSimple.Direction[] directions) {
             this(name,type,names,maxTargetFunc,minTargetFunc,()->(1.0),()->(-1.0),errorTol,defaultTimeout,keyPositionKeys,keyPositionValues,directions);
+        }
+        public CRActuator(String name, Class<E> type, String[] names, ReturningFunc<Double> maxPowerFunc, ReturningFunc<Double> minPowerFunc, DcMotorSimple.Direction[] directions) { //For CRActuators that don't set targets and only use setPower, like drivetrain motors.
+            this(name,type,names,()->(Double.POSITIVE_INFINITY),()->(Double.NEGATIVE_INFINITY),()->(1.0),()->(-1.0),0,0,new String[]{},new double[]{},directions);
         }
         @Actuate
         public void setPower(double power, String name){ //Sets power to a specific part
@@ -411,6 +415,7 @@ public abstract class Components {
             );
         }
     }
+    //Each of the bottom-level subclass constructors will accept getCurrentPosition functions and control functions, since those cater to a specific subclass.
     public static class BotMotor extends CRActuator<DcMotorEx>{
         public boolean isStallResetting;
         @SafeVarargs
@@ -430,6 +435,14 @@ public abstract class Components {
                 part.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             }
             this.funcRegister=new FuncRegister<BotMotor>(this,(DcMotorEx motor)->((double) motor.getCurrentPosition()),controlFuncKeys, controlFuncs);
+        }
+        public BotMotor(String name, String[] names, ReturningFunc<Double> maxPowerFunc, ReturningFunc<Double> minPowerFunc, DcMotorSimple.Direction[] directions) {
+            super(name, DcMotorEx.class, names, maxPowerFunc, minPowerFunc, directions);
+            for (DcMotorEx part:parts.values()){
+                part.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+                part.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+            }
+            this.funcRegister=new FuncRegister<BotMotor>(this,(DcMotorEx motor)->((double) motor.getCurrentPosition()),new String[]{},new ArrayList<>());
         }
         public double getVelocity(){ //Returns avg velocity of all parts
             double avg=0;
