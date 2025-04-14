@@ -58,6 +58,9 @@ public abstract class PresetControl { //Holds control functions that actuators c
                 prevLoopTime=timer.time();
                 integralIntervalTime=timer.time();
             }
+            if (isStart||parentActuator.newTarget){
+                Arrays.setAll(integralSums,(int i)->(0.0));
+            }
             for (int i=0;i<parentActuator.partNames.length;i++){
                 double currentPosition = parentActuator.getCurrentPosition(parentActuator.partNames[i]);
                 if (timer.time()-integralIntervalTime>0.1){ //Limited integration history; once every 100 ms
