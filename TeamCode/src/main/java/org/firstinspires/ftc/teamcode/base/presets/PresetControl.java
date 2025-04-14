@@ -38,6 +38,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
         public double[] integralSums;
         public double[] previousErrors;
         public double prevLoopTime;
+        public double integralIntervalTime;
         public ArrayList<PIDFConstants> constants;
         public PIDF(PIDFConstants...constants){ //The PIDF can accept multiple sets of coefficients, since if two synchronized CR components have different loads, they will need to produce different power outputs
             this.constants=new ArrayList<>(Arrays.asList(constants));
@@ -53,9 +54,16 @@ public abstract class PresetControl { //Holds control functions that actuators c
         }
         @Override
         protected void runProcedure() {
+            if (isStart){
+                prevLoopTime=timer.time();
+                integralIntervalTime=timer.time();
+            }
             for (int i=0;i<parentActuator.partNames.length;i++){
                 double currentPosition = parentActuator.getCurrentPosition(parentActuator.partNames[i]);
-                integralSums[i] += parentActuator.getTarget()-currentPosition;
+                if (timer.time()-integralIntervalTime>0.1){
+                    integralSums[i] += parentActuator.getTarget()-currentPosition;
+                    integralIntervalTime=timer.time();
+                }
                 parentActuator.setPower(
                         constants.get(i).kP * parentActuator.instantTarget-currentPosition +
                                 constants.get(i).kI * integralSums[i] * timer.time()-prevLoopTime +
