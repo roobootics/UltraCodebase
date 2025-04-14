@@ -60,7 +60,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
             }
             for (int i=0;i<parentActuator.partNames.length;i++){
                 double currentPosition = parentActuator.getCurrentPosition(parentActuator.partNames[i]);
-                if (timer.time()-integralIntervalTime>0.1){
+                if (timer.time()-integralIntervalTime>0.1){ //Limited integration history; once every 100 ms
                     integralSums[i] += parentActuator.getTarget()-currentPosition;
                     integralIntervalTime=timer.time();
                 }
