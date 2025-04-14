@@ -13,7 +13,7 @@ import org.firstinspires.ftc.teamcode.base.programs.RunConfigs;
 import java.util.ArrayList;
 import java.util.Objects;
 @TeleOp
-public class GenericTetsyWetsyUwU extends LinearOpMode { //Used to find the specific positions that we will end up setting actuators to. Excuse the crude, yet traditional, naming convention. Allows one to select an actuator and move it.
+public class GenericPositionFinder extends LinearOpMode { //Used to find the specific positions that we will end up setting actuators to. Excuse the crude, yet traditional, naming convention. Allows one to select an actuator and move it.
     public int selectedActuatorIndex = 0;
     public ArrayList<String> actuatorNames;
     @Override
