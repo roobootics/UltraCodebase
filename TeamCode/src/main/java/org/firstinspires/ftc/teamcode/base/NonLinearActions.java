@@ -753,31 +753,18 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             return false;
         }
     }
-    public static class LoopActionScheduler implements UnmappedActionGroup{ //Group of actions that runs actions in parallel in a while loop (used for TeleOp)
-        public ArrayList<NonLinearAction> actions;
+    public static class LoopActionScheduler extends NonLinearParallelAction{ //Group of actions that runs actions in parallel in a while loop (used for TeleOp)
         public LoopActionScheduler(NonLinearAction...actions){
-            this.actions=new ArrayList<>(Arrays.asList(actions));
-            for (NonLinearAction action : actions) {
-                action.registerRemoveFromGroup(() -> this.removeAction(action));
-            }
+            super(actions);
+        }
+        public void runOnce(){
+            reset(); run();
         }
         public void runLoop(Condition loopCondition) {
             while (loopCondition.call()) {
-                for (NonLinearAction action : actions) {
-                    action.reset(); action.run();
-                }
+                runOnce();
             }
-            for (NonLinearAction action : actions) {
-                action.stop();
-            }
-        }
-        @Override
-        public void addActionProcedure(NonLinearAction action) {
-            actions.add(action);
-        }
-        @Override
-        public void removeActionProcedure(NonLinearAction action) {
-            actions.remove(action);
+            stop();
         }
     }
     public static class LinearActionScheduler extends NonLinearSequentialAction { //Group of actions that runs actions sequentially (used for Autonomous)
