@@ -15,7 +15,7 @@ import java.util.Objects;
 @TeleOp
 public class GenericPositionFinder extends LinearOpMode { //Used to find the specific positions that we will end up setting actuators to. Allows one to select an actuator and move it.
     public int selectedActuatorIndex = 0;
-    public ArrayList<String> actuatorNames;
+    public ArrayList<String> actuatorNames = new ArrayList<>();
     @Override
     public void runOpMode(){
         this.run();
