@@ -594,21 +594,21 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
 
     public static class PressTrigger extends ConditionalAction { //ConditionalAction, but all conditions are converted into button-presses, such that they will not return 'true' two loop-iterations in a row.
-        public boolean[] isPressed;
+        public ArrayList<Boolean> isPressed;
 
         public PressTrigger(IfThen... conditionalPairs) {
             super(conditionalPairs);
             actions.clear();
-            isPressed = new boolean[conditionalPairs.length];
+            isPressed = new ArrayList<>(conditionalPairs.length);
             for (int i = 0; i < conditionalPairs.length; i++) {
                 int finalI = i;
                 actions.put(
                         () -> {
                             if (conditionalPairs[finalI].condition.call()) {
-                                Arrays.fill(isPressed, true);
-                                return !isPressed[finalI];
+                                isPressed.set(finalI,true);
+                                return !isPressed.get(finalI);
                             } else {
-                                isPressed[finalI] = false;
+                                isPressed.set(finalI,false);
                                 return false;
                             }
                         },
@@ -616,29 +616,69 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 );
             }
         }
+        @Override
+        public void addAction(ReturningFunc<Boolean> condition, NonLinearAction action){
+            actions.put(condition,action);
+            isPressed.add(false);
+        }
+        @Override
+        public void removeAction(NonLinearAction action){
+            ReturningFunc<Boolean> matchingKey = null;
+            int matchingIndex=0;
+            for (ReturningFunc<Boolean> key:actions.keySet()){
+                if (actions.get(key)==action){
+                    matchingKey=key;
+                }
+                else{
+                    matchingIndex++;
+                }
+            }
+            actions.remove(matchingKey);
+            isPressed.remove(matchingIndex);
+        }
     }
 
     public static class PersistentPressTrigger extends PersistentConditionalAction { //PressTrigger but persistent
-        public boolean[] isPressed;
+        public ArrayList<Boolean> isPressed;
         public PersistentPressTrigger(IfThen... conditionalPairs) {
             super(conditionalPairs);
             actions.clear();
-            isPressed = new boolean[conditionalPairs.length];
+            isPressed = new ArrayList<>(conditionalPairs.length);
             for (int i = 0; i < conditionalPairs.length; i++) {
                 int finalI = i;
                 actions.put(
                         () -> {
                             if (conditionalPairs[finalI].condition.call()) {
-                                Arrays.fill(isPressed, true);
-                                return !isPressed[finalI];
+                                isPressed.set(finalI,true);
+                                return !isPressed.get(finalI);
                             } else {
-                                isPressed[finalI] = false;
+                                isPressed.set(finalI,false);
                                 return false;
                             }
                         },
                         conditionalPairs[i].action
                 );
             }
+        }
+        @Override
+        public void addAction(ReturningFunc<Boolean> condition, NonLinearAction action){
+            actions.put(condition,action);
+            isPressed.add(false);
+        }
+        @Override
+        public void removeAction(NonLinearAction action){
+            ReturningFunc<Boolean> matchingKey = null;
+            int matchingIndex=0;
+            for (ReturningFunc<Boolean> key:actions.keySet()){
+                if (actions.get(key)==action){
+                    matchingKey=key;
+                }
+                else{
+                    matchingIndex++;
+                }
+            }
+            actions.remove(matchingKey);
+            isPressed.remove(matchingIndex);
         }
     }
 
@@ -716,7 +756,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         private final ReturningFunc<Double> yFun;
         private final ReturningFunc<Double> rxFun;
         private final Condition slowDownFun;
-        private final Components.BotMotor[] motors;
+        private final BotMotor[] motors;
 
         public RobotCentricMecanumAction(BotMotor[] motors, ReturningFunc<Double> xFun, ReturningFunc<Double> yFun, ReturningFunc<Double> rxFun, Condition slowDownFun) {
             this.xFun = xFun;

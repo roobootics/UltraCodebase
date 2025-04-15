@@ -45,7 +45,7 @@ public abstract class Components {
     public @interface Actuate{} //Used to denote methods that actually move a part, like setPower or setPosition
     public abstract static class PartsConfig{ //Classes overriding PartsConfig will have static fields that hold all the actuators for a build. Similar to Mr. Nayal's JSON files that held the components and data on each component of a build.
         //Create field of type Actuator here to hold the actuators
-        public static void initialize(HardwareMap hardwareMap, Telemetry telemetry){ //Common method to initialize hardwareMap and telemetry
+        public static void initialize(HardwareMap hardwareMap, Telemetry telemetry){ //Inner method to initialize hardwareMap and telemetry, common for all PartsConfigs
             Components.hardwareMap=hardwareMap;
             Components.telemetry=telemetry;
             timer.reset(); //Static variables are preserved between runs, so timer needs to be reset
