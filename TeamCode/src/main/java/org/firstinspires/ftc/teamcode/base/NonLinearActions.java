@@ -77,6 +77,11 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             removeActionProcedure(action);
         }
         void removeActionProcedure(NonLinearAction action); //Allows action groups to remove actions from the group
+        default void registerActions(NonLinearAction...actions){
+            for (NonLinearAction action : actions) {
+                action.registerRemoveFromGroup(() -> this.removeAction(action));
+            }
+        }
     }
 
     public interface UnmappedActionGroup { //NonLinearActions that run an unmapped set of other actions should implement this. (ParallelActions)
@@ -84,7 +89,6 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             action.registerRemoveFromGroup(() -> this.removeAction(action));
             addActionProcedure(action);
         }
-
         void addActionProcedure(NonLinearAction action);
 
         default void removeAction(NonLinearAction action){
@@ -92,6 +96,15 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             removeActionProcedure(action);
         }
         void removeActionProcedure(NonLinearAction action); //Allows action groups to remove actions from the group
+        default void registerActions(NonLinearAction...actions){
+            for (NonLinearAction action : actions) {
+                action.registerRemoveFromGroup(() -> this.removeAction(action));
+            }
+        }
+    }
+    public enum ScheduleType{
+        ADD,
+        REMOVE
     }
 
     //TEMPLATE ACTIONS
@@ -164,7 +177,46 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
 
     //PRELOADED ACTIONS
-
+    public static class UnmappedScheduleAction extends CompoundAction{ //Allows one to schedule the adding or removing of an action from an unmapped action group when a condition is met, or if a timeout is reached
+        public UnmappedScheduleAction(UnmappedActionGroup group, Condition condition, NonLinearAction action, ScheduleType type, double timeout){
+            Procedure schedule;
+            if (type==ScheduleType.ADD) schedule = ()->group.addAction(action); else schedule=()->group.removeAction(action);
+            sequence = new NonLinearSequentialAction(
+                    new SleepUntilTrue(condition,timeout),
+                    new InstantAction(schedule),
+                    new InstantAction(this::removeFromGroup)
+            );
+        }
+        public UnmappedScheduleAction(UnmappedActionGroup group, Condition condition, NonLinearAction action, ScheduleType type){
+            Procedure schedule;
+            if (type==ScheduleType.ADD) schedule = ()->group.addAction(action); else schedule=()->group.removeAction(action);
+            sequence = new NonLinearSequentialAction(
+                    new SleepUntilTrue(condition),
+                    new InstantAction(schedule),
+                    new InstantAction(this::removeFromGroup)
+            );
+        }
+    }
+    public static class MappedScheduleAction<E> extends CompoundAction{ //Allows one to schedule the adding or removing of an action from a mapped action group when a condition is met, or if a timeout is reached
+        public MappedScheduleAction(MappedActionGroup<E> group, Condition condition, E key, NonLinearAction action, ScheduleType type, double timeout){
+            Procedure schedule;
+            if (type==ScheduleType.ADD) schedule = ()->group.addAction(key,action); else schedule=()->group.removeAction(action);
+            sequence = new NonLinearSequentialAction(
+                    new SleepUntilTrue(condition,timeout),
+                    new InstantAction(schedule),
+                    new InstantAction(this::removeFromGroup)
+            );
+        }
+        public MappedScheduleAction(MappedActionGroup<E> group, Condition condition, E key, NonLinearAction action, ScheduleType type){
+            Procedure schedule;
+            if (type==ScheduleType.ADD) schedule = ()->group.addAction(key,action); else schedule=()->group.removeAction(action);
+            sequence = new NonLinearSequentialAction(
+                    new SleepUntilTrue(condition),
+                    new InstantAction(schedule),
+                    new InstantAction(this::removeFromGroup)
+            );
+        }
+    }
     public static class RunLoopRoutine extends ContinuousAction { //This action runs each actuator's control functions and updates the telemetry using the updateTelemetry function it is provided
         public RunLoopRoutine(Procedure updateTelemetry) {
             super(() -> {
@@ -278,8 +330,8 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             isStarts = new ArrayList<>(actions.length);
             for (NonLinearAction action : actions) {
                 isStarts.add(true);
-                action.registerRemoveFromGroup(() -> this.removeAction(action));
             }
+            registerActions(actions);
         }
 
         @Override
@@ -327,9 +379,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         public NonLinearParallelAction(NonLinearAction... actions) {
             this.actions = Arrays.asList(actions);
             this.remainingActions = new ArrayList<>(this.actions);
-            for (NonLinearAction action : actions) {
-                action.registerRemoveFromGroup(() -> this.removeAction(action));
-            }
+            registerActions(actions);
         }
 
         @Override
@@ -381,9 +431,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             for (IfThen conditionalPair : conditionalPairs) {
                 actions.put(conditionalPair.condition, conditionalPair.action);
             }
-            for (NonLinearAction action : actions.values()) {
-                action.registerRemoveFromGroup(() -> this.removeAction(action));
-            }
+            registerActions(actions.values().toArray(new NonLinearAction[0]));
         }
 
         @Override
@@ -441,7 +489,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
     }
 
-    public static class PersistentConditionalAction extends PersistentNonLinearAction { //ConditionalAction, but an action cannot be interrupted
+    public static class PersistentConditionalAction extends PersistentNonLinearAction implements MappedActionGroup<ReturningFunc<Boolean>>{ //ConditionalAction, but an action cannot be interrupted
         public LinkedHashMap<ReturningFunc<Boolean>, NonLinearAction> actions = new LinkedHashMap<>();
         public NonLinearAction currentAction = null;
 
@@ -449,6 +497,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             for (IfThen conditionalPair : conditionalPairs) {
                 actions.put(conditionalPair.condition, conditionalPair.action);
             }
+            registerActions(actions.values().toArray(new NonLinearAction[0]));
         }
 
         @Override
@@ -472,6 +521,21 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 }
             } else return false;
         }
+        @Override
+        public void addActionProcedure(ReturningFunc<Boolean> key, NonLinearAction action) {
+            actions.put(key,action);
+        }
+        @Override
+        public void removeActionProcedure(NonLinearAction action) {
+            for (ReturningFunc<Boolean> key: actions.keySet()){
+                if (actions.get(key)==action){
+                    if (currentAction==actions.get(key)){
+                        currentAction=null;
+                    }
+                    actions.remove(key);
+                }
+            }
+        }
     }
 
     public static class SemiPersistentConditionalAction extends NonLinearAction implements MappedActionGroup<ReturningFunc<Boolean>> { //ConditionalAction, but an action can only be interrupted if the SemiPersistentConditionalAction is reset()
@@ -482,6 +546,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             for (IfThen conditionalPair : conditionalPairs) {
                 actions.put(conditionalPair.condition, conditionalPair.action);
             }
+            registerActions(actions.values().toArray(new NonLinearAction[0]));
         }
 
         @Override
@@ -754,30 +819,6 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
     }
     public static class LoopActionScheduler extends NonLinearParallelAction{ //Group of actions that runs actions in parallel in a while loop (used for TeleOp)
-        public enum ScheduleType{
-            ADD,
-            REMOVE
-        }
-        public class ScheduleAction extends CompoundAction{ //Allows one to schedule the adding or removing of an action from the scheduler when a condition is met, or if a timeout is reached
-            public ScheduleAction(Condition condition, NonLinearAction action, ScheduleType type, double timeout){
-                Procedure schedule;
-                if (type==ScheduleType.ADD) schedule = ()->addAction(action); else schedule=()->removeAction(action);
-                sequence = new NonLinearSequentialAction(
-                        new SleepUntilTrue(condition,timeout),
-                        new InstantAction(schedule),
-                        new InstantAction(this::removeFromGroup)
-                );
-            }
-            public ScheduleAction(Condition condition, NonLinearAction action, ScheduleType type){
-                Procedure schedule;
-                if (type==ScheduleType.ADD) schedule = ()->addAction(action); else schedule=()->removeAction(action);
-                sequence = new NonLinearSequentialAction(
-                        new SleepUntilTrue(condition),
-                        new InstantAction(schedule),
-                        new InstantAction(this::removeFromGroup)
-                );
-            }
-        }
         public LoopActionScheduler(NonLinearAction...actions){
             super(actions);
         }
@@ -789,18 +830,6 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 runOnce();
             }
             stop();
-        }
-        public void scheduleAddAction(Condition condition, NonLinearAction action, double timeout){
-            addAction(new ScheduleAction(condition,action,ScheduleType.ADD,timeout));
-        }
-        public void scheduleAddAction(Condition condition, NonLinearAction action){
-            addAction(new ScheduleAction(condition,action,ScheduleType.ADD));
-        }
-        public void scheduleRemoveAction(Condition condition, NonLinearAction action, double timeout){
-            addAction(new ScheduleAction(condition,action,ScheduleType.REMOVE,timeout));
-        }
-        public void scheduleRemoveAction(Condition condition, NonLinearAction action){
-            addAction(new ScheduleAction(condition,action,ScheduleType.REMOVE));
         }
     }
     public static class LinearActionScheduler extends NonLinearSequentialAction { //Group of actions that runs actions sequentially (used for Autonomous)
