@@ -260,7 +260,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
 
     public static class PowerOnCommand extends NonLinearAction { //This action automatically activates each actuator's default control functions when they are first commanded
-        public HashMap<String, Boolean> actuatorsCommanded;
+        public HashMap<String, Boolean> actuatorsCommanded = new HashMap<>();
 
         @Override
         boolean runProcedure() {

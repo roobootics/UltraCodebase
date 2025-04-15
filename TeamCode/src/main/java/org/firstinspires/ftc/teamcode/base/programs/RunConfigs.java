@@ -1,15 +1,18 @@
 package org.firstinspires.ftc.teamcode.base.programs;
 
+import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 
+import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.base.Components.PartsConfig;
 import org.firstinspires.ftc.teamcode.base.Components.BotServo;
+import org.firstinspires.ftc.teamcode.base.LambdaInterfaces;
 
 public abstract class RunConfigs {
     public static class TestServo extends PartsConfig {
-        public BotServo testServo;
-        @Override
-        public void initParts() {
+        public static BotServo testServo;
+        public static void init(HardwareMap hardwareMap, Telemetry telemetry){
+            initialize(hardwareMap, telemetry);
             testServo=new BotServo(
                     "test", new String[]{"test"},
                     ()->(0.0),()->(270.0),
@@ -18,6 +21,6 @@ public abstract class RunConfigs {
                     270,
                     0
             );
-        }
+        };
     }
 }

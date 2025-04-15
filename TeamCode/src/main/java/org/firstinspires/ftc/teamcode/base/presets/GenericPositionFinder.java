@@ -18,8 +18,7 @@ public class GenericPositionFinder extends LinearOpMode { //Used to find the spe
     public ArrayList<String> actuatorNames;
     @Override
     public void runOpMode(){
-        //Uncomment below line and replace PartsConfig with the desired subclass of PartsConfig whose actuators you wish to test
-        this.<RunConfigs.TestServo>run();
+        this.run();
     }
     public void updateTelemetry(){
         telemetry.addLine(actuatorNames.get(selectedActuatorIndex));
@@ -36,8 +35,8 @@ public class GenericPositionFinder extends LinearOpMode { //Used to find the spe
             selectedActuatorIndex-=1;
         }
     }
-    public <E extends Components.PartsConfig> void run(){
-        E.initialize(hardwareMap,telemetry);
+    public void run(){
+        RunConfigs.TestServo.init(hardwareMap,telemetry);
         for (String name:actuators.keySet()){
             if (!(actuators.get(name) instanceof Components.BotMotor)){
                 Objects.requireNonNull(actuators.get(name)).switchControl(Objects.requireNonNull(actuators.get(name)).defaultControlKey);

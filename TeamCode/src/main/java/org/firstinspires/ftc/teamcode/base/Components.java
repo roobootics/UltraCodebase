@@ -45,14 +45,11 @@ public abstract class Components {
     public @interface Actuate{} //Used to denote methods that actually move a part, like setPower or setPosition
     public abstract static class PartsConfig{ //Classes overriding PartsConfig will have static fields that hold all the actuators for a build. Similar to Mr. Nayal's JSON files that held the components and data on each component of a build.
         //Create field of type Actuator here to hold the actuators
-        public static PartsConfig singleton; //Needed because the method initParts must be overridden, and static methods cannot be overridden, so it must be called through an instance
-        public static void initialize(HardwareMap hardwareMap, Telemetry telemetry){ //This is the method called in TeleOp classes, as it also provides hardwareMap and telemetry to the codebase
+        public static void initialize(HardwareMap hardwareMap, Telemetry telemetry){ //Common method to initialize hardwareMap and telemetry
             Components.hardwareMap=hardwareMap;
             Components.telemetry=telemetry;
             timer.reset(); //Static variables are preserved between runs, so timer needs to be reset
-            singleton.initParts();
         }
-        protected abstract void initParts(); //This is where the actuator instances are constructed and assigned to the static fields in the PartsConfig
     }
     public abstract static class ControlFunction<E extends Actuator<?>>{ //The subclasses of this are methods that are called to control actuators and get them to the target, such as PID or motion profiles. Each function works with a specific type of actuator. Multiple can run at once
         public E parentActuator; //Each function has access to the actuator it runs on
@@ -70,7 +67,7 @@ public abstract class Components {
     }
     public abstract static class Actuator<E extends HardwareDevice>{ //Actuators are enhanced hardware classes that have more state and functionality. Each Actuator instance is parametrized with a specific type, like DcMotorEx or Servo/.
         public String name;
-        public HashMap<String,E> parts; public String[] partNames; //Since two hardware devices can be synchronized on one mechanism, Actuators can have multiple inner parts, each referenced by its hardwareMap name
+        public HashMap<String,E> parts = new HashMap<>(); public String[] partNames; //Since two hardware devices can be synchronized on one mechanism, Actuators can have multiple inner parts, each referenced by its hardwareMap name
 
         double target;
         public double instantTarget;
@@ -87,7 +84,7 @@ public abstract class Components {
 
         public HashMap<String,Double> keyPositions = new HashMap<>(); //Stores key positions, like 'transferPosition,' etc.
 
-        public HashMap<String,ReturningFunc<Double>> getCurrentPositions; //Map of methods to get the current positions of each of the actuator's parts. (They may have slightly different positions each)
+        public HashMap<String,ReturningFunc<Double>> getCurrentPositions = new HashMap<>(); //Map of methods to get the current positions of each of the actuator's parts. (They may have slightly different positions each)
         public FuncRegister<?> funcRegister;
         public String currControlFuncKey;
         public String defaultControlKey;
@@ -302,7 +299,7 @@ public abstract class Components {
     }
     //Each of the subclasses of Actuator will have some generic constructors and some constructors where information is preset.
     public abstract static class CRActuator<E extends DcMotorSimple> extends Actuator<E>{ //Type of Actuator that works for continuous rotation parts, like DcMotorEx and CRServo
-        HashMap<String,Double> powers; //Stores the powers each of the parts are set to. Synchronized parts can have different powers because the load on one may be larger than on the other
+        HashMap<String,Double> powers = new HashMap<>(); //Stores the powers each of the parts are set to. Synchronized parts can have different powers because the load on one may be larger than on the other
         ReturningFunc<Double> maxPowerFunc;
         ReturningFunc<Double> minPowerFunc;
         //Max and min power boundaries
