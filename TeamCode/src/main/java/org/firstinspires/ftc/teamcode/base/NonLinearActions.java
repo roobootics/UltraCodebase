@@ -754,20 +754,23 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
     }
     public static class LoopActionScheduler extends NonLinearParallelAction{ //Group of actions that runs actions in parallel in a while loop (used for TeleOp)
-
-        public class ScheduleAction extends CompoundAction{
-            public ScheduleAction(Condition condition, NonLinearAction action, boolean add, double timeout){
+        public enum ScheduleType{
+            ADD,
+            REMOVE
+        }
+        public class ScheduleAction extends CompoundAction{ //Allows one to schedule the adding or removing of an action from the scheduler when a condition is met, or if a timeout is reached
+            public ScheduleAction(Condition condition, NonLinearAction action, ScheduleType type, double timeout){
                 Procedure schedule;
-                if (add) schedule = ()->addAction(action); else schedule=()->removeAction(action);
+                if (type==ScheduleType.ADD) schedule = ()->addAction(action); else schedule=()->removeAction(action);
                 sequence = new NonLinearSequentialAction(
                         new SleepUntilTrue(condition,timeout),
                         new InstantAction(schedule),
                         new InstantAction(this::removeFromGroup)
                 );
             }
-            public ScheduleAction(Condition condition, NonLinearAction action, boolean add){
+            public ScheduleAction(Condition condition, NonLinearAction action, ScheduleType type){
                 Procedure schedule;
-                if (add) schedule = ()->addAction(action); else schedule=()->removeAction(action);
+                if (type==ScheduleType.ADD) schedule = ()->addAction(action); else schedule=()->removeAction(action);
                 sequence = new NonLinearSequentialAction(
                         new SleepUntilTrue(condition),
                         new InstantAction(schedule),
@@ -788,16 +791,16 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             stop();
         }
         public void scheduleAddAction(Condition condition, NonLinearAction action, double timeout){
-            addAction(new ScheduleAction(condition,action,true,timeout));
+            addAction(new ScheduleAction(condition,action,ScheduleType.ADD,timeout));
         }
         public void scheduleAddAction(Condition condition, NonLinearAction action){
-            addAction(new ScheduleAction(condition,action,true));
+            addAction(new ScheduleAction(condition,action,ScheduleType.ADD));
         }
         public void scheduleRemoveAction(Condition condition, NonLinearAction action, double timeout){
-            addAction(new ScheduleAction(condition,action,false,timeout));
+            addAction(new ScheduleAction(condition,action,ScheduleType.REMOVE,timeout));
         }
         public void scheduleRemoveAction(Condition condition, NonLinearAction action){
-            addAction(new ScheduleAction(condition,action,false));
+            addAction(new ScheduleAction(condition,action,ScheduleType.REMOVE));
         }
     }
     public static class LinearActionScheduler extends NonLinearSequentialAction { //Group of actions that runs actions sequentially (used for Autonomous)
