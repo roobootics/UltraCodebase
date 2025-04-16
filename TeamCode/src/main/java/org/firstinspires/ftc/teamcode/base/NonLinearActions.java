@@ -318,7 +318,68 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             return (timer.time() - startTime) < time;
         }
     }
-
+    public static class InterruptOnTimeout extends NonLinearAction{ //Action to run the action passed to it, but interrupt it after it's been running for a given time
+        NonLinearAction action;
+        NonLinearSleepAction sleepAction;
+        boolean actionEnded=false;
+        public InterruptOnTimeout(double time, NonLinearAction action){
+            this.action=action;
+            this.sleepAction=new NonLinearSleepAction(time);
+        }
+        @Override
+        boolean runProcedure() {
+            if (isStart){
+                sleepAction.reset();
+                action.reset();
+                actionEnded=false;
+            }
+            if (sleepAction.run()){
+                if (!actionEnded && !action.run()){
+                    actionEnded=true;
+                }
+            }
+            else{
+                actionEnded=true;
+                action.stop();
+            }
+            return !actionEnded;
+        }
+        @Override
+        public void stopProcedure(){
+            action.stop();
+        }
+    }
+    public static class InterruptOnCondition extends NonLinearAction{ //Action to run the action passed to it, but interrupt it after a given condition is met
+        NonLinearAction action;
+        SleepUntilTrue sleepAction;
+        boolean actionEnded=false;
+        public InterruptOnCondition(Condition condition, NonLinearAction action){
+            this.action=action;
+            this.sleepAction=new SleepUntilTrue(condition);
+        }
+        @Override
+        boolean runProcedure() {
+            if (isStart){
+                sleepAction.reset();
+                action.reset();
+                actionEnded=false;
+            }
+            if (sleepAction.run()){
+                if (!actionEnded && !action.run()){
+                    actionEnded=true;
+                }
+            }
+            else{
+                actionEnded=true;
+                action.stop();
+            }
+            return !actionEnded;
+        }
+        @Override
+        public void stopProcedure(){
+            action.stop();
+        }
+    }
     public static class NonLinearSequentialAction extends NonLinearAction implements MappedActionGroup<Integer> { //Runs actions sequentially
         public List<NonLinearAction> remainingActions;
         public List<NonLinearAction> actions;
