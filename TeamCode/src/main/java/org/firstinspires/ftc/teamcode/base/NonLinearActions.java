@@ -19,6 +19,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
 import org.firstinspires.ftc.teamcode.base.LambdaInterfaces.Condition;
+
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 public abstract class NonLinearActions { //Command-based (or action-based) system
     public abstract static class NonLinearAction { //Base class for any action
@@ -918,6 +920,19 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             motors[3].setPower(backRightPower);
             return false;
         }
+    }
+    public static PressTrigger triggeredToggleAction(Condition condition, NonLinearAction action1, NonLinearAction action2){
+        AtomicBoolean state = new AtomicBoolean(true);
+        action1 = new NonLinearSequentialAction(action1,new InstantAction(()->state.set(!state.get())));
+        action2 = new NonLinearSequentialAction(action2,new InstantAction(()->state.set(!state.get())));
+        return new PressTrigger(
+                new IfThen(condition,
+                        new SemiPersistentConditionalAction(
+                                new IfThen(state::get,action1),
+                                new IfThen(()->(!state.get()),action2)
+                        )
+                )
+        );
     }
     public static class LoopActionScheduler extends NonLinearParallelAction{ //Group of actions that runs actions in parallel in a while loop (used for TeleOp)
         public LoopActionScheduler(NonLinearAction...actions){
