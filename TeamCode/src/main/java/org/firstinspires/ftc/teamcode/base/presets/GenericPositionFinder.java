@@ -23,6 +23,7 @@ public class GenericPositionFinder extends LinearOpMode { //Used to find the spe
     public void updateTelemetry(){
         telemetry.addLine(actuatorNames.get(selectedActuatorIndex));
         telemetry.addData("position", Objects.requireNonNull(actuators.get(actuatorNames.get(selectedActuatorIndex))).getCurrentPosition());
+        telemetry.addData("e",Objects.requireNonNull(actuators.get(actuatorNames.get(selectedActuatorIndex))).getTarget());
         telemetry.update();
     }
     public void shiftSelectionRight(){
@@ -54,14 +55,12 @@ public class GenericPositionFinder extends LinearOpMode { //Used to find the spe
             int finalI = i;
             conditions[i]=new NonLinearActions.IfThen(
                     ()->(selectedActuatorIndex==finalI),
-                    Objects.requireNonNull(actuators.get(actuatorNames.get(i))).triggeredDynamicAction(()->(gamepad1.left_bumper),()->(gamepad1.right_bumper),1)
+                    Objects.requireNonNull(actuators.get(actuatorNames.get(i))).triggeredDynamicAction(()->(gamepad1.left_bumper),()->(gamepad1.right_bumper),0.01)
             );
         }
 
         waitForStart();
         new NonLinearActions.LoopActionScheduler(
-                new NonLinearActions.PowerOnCommand(),
-                new NonLinearActions.RunLoopRoutine(this::updateTelemetry),
                 new NonLinearActions.PressTrigger(new NonLinearActions.IfThen(
                         ()->(gamepad1.dpad_left),
                         new NonLinearActions.InstantAction(this::shiftSelectionLeft)
@@ -72,7 +71,9 @@ public class GenericPositionFinder extends LinearOpMode { //Used to find the spe
                 )),
                 new NonLinearActions.ConditionalAction(
                         conditions
-                )
+                ),
+                new NonLinearActions.PowerOnCommand(),
+                new NonLinearActions.RunLoopRoutine(this::updateTelemetry)
         ).runLoop(this::opModeIsActive);
     }
 }

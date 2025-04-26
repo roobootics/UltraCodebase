@@ -16,12 +16,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Objects;
 import org.firstinspires.ftc.teamcode.base.LambdaInterfaces.Condition;
 
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 public abstract class NonLinearActions { //Command-based (or action-based) system
     public abstract static class NonLinearAction { //Base class for any action
         public boolean isBusy = false; //Indicates whether the action is active or not
@@ -65,18 +63,19 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             removeFromGroup = null;
         }
     }
-
     public interface MappedActionGroup<K> { //NonLinearActions that run a group of other actions, and stores them with indexes or keys, should implement this. (SequentialActions, ConditionalActions)
-        default void addAction(K key, NonLinearAction action) { //Actual method called to add actions
+        ArrayList<Procedure> scheduledRemovals = new ArrayList<>();
+        ArrayList<Procedure> scheduledAdditions = new ArrayList<>();
+        default void addAction(K key, NonLinearAction action) { //Method that schedules the adding of an action for the end of the loop (required to avoid concurrent modifications)
             action.registerRemoveFromGroup(() -> this.removeAction(action));
-            addActionProcedure(key, action);
+            scheduledAdditions.add(()->addActionProcedure(key, action));
         }
 
         void addActionProcedure(K key, NonLinearAction action); //Allows action groups to add actions to the group
 
-        default void removeAction(NonLinearAction action){
+        default void removeAction(NonLinearAction action){ //Method that schedules the removal of an action for the end of the loop (required to avoid concurrent modifications)
             action.stop();
-            removeActionProcedure(action);
+            scheduledRemovals.add(()->removeActionProcedure(action));
         }
         void removeActionProcedure(NonLinearAction action); //Allows action groups to remove actions from the group
         default void registerActions(NonLinearAction...actions){
@@ -87,15 +86,17 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
 
     public interface UnmappedActionGroup { //NonLinearActions that run an unmapped set of other actions should implement this. (ParallelActions)
-        default void addAction(NonLinearAction action) {
+        ArrayList<Procedure> scheduledRemovals = new ArrayList<>();
+        ArrayList<Procedure> scheduledAdditions = new ArrayList<>();
+        default void addAction(NonLinearAction action) { //Method that schedules the adding of an action for the end of the loop (required to avoid concurrent modifications)
             action.registerRemoveFromGroup(() -> this.removeAction(action));
-            addActionProcedure(action);
+            scheduledAdditions.add(()->addActionProcedure(action));
         }
-        void addActionProcedure(NonLinearAction action);
+        void addActionProcedure(NonLinearAction action); //Allows action groups to add actions to the group
 
-        default void removeAction(NonLinearAction action){
+        default void removeAction(NonLinearAction action){ //Method that schedules the removal of an action for the end of the loop (required to avoid concurrent modifications)
             action.stop();
-            removeActionProcedure(action);
+            scheduledRemovals.add(()->removeActionProcedure(action));
         }
         void removeActionProcedure(NonLinearAction action); //Allows action groups to remove actions from the group
         default void registerActions(NonLinearAction...actions){
@@ -103,6 +104,24 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 action.registerRemoveFromGroup(() -> this.removeAction(action));
             }
         }
+    }
+    public static void conductActionModifications(){ //Adds and removes all actions that need to be added or removed. Called by top-level action schedulers at the end of each loop iteration
+        for (Procedure add:MappedActionGroup.scheduledAdditions){
+            add.call();
+        }
+        for (Procedure remove:MappedActionGroup.scheduledRemovals){
+            remove.call();
+        }
+        for (Procedure add:UnmappedActionGroup.scheduledAdditions){
+            add.call();
+        }
+        for (Procedure remove:UnmappedActionGroup.scheduledAdditions){
+            remove.call();
+        }
+        MappedActionGroup.scheduledAdditions.clear();
+        MappedActionGroup.scheduledRemovals.clear();
+        UnmappedActionGroup.scheduledAdditions.clear();
+        UnmappedActionGroup.scheduledRemovals.clear();
     }
     public enum ScheduleType{
         ADD,
@@ -266,7 +285,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
 
         @Override
         boolean runProcedure() {
-            if (actuatorsCommanded.containsValue(false))
+            if (actuatorsCommanded.size()<actuators.size())
                 for (String key : actuators.keySet()) {
                     if (Objects.requireNonNull(actuators.get(key)).newTarget && Boolean.FALSE.equals(actuatorsCommanded.get(key))) {
                         Objects.requireNonNull(actuators.get(key)).switchControl(Objects.requireNonNull(actuators.get(key)).defaultControlKey);
@@ -383,12 +402,12 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
     }
     public static class NonLinearSequentialAction extends NonLinearAction implements MappedActionGroup<Integer> { //Runs actions sequentially
-        public List<NonLinearAction> remainingActions;
-        public List<NonLinearAction> actions;
+        public ArrayList<NonLinearAction> remainingActions;
+        public ArrayList<NonLinearAction> actions;
         public ArrayList<Boolean> isStarts;
 
         public NonLinearSequentialAction(NonLinearAction... actions) {
-            this.actions = Arrays.asList(actions);
+            this.actions = new ArrayList<>(Arrays.asList(actions));
             this.remainingActions = new ArrayList<>(this.actions);
             isStarts = new ArrayList<>(actions.length);
             for (NonLinearAction action : actions) {
@@ -400,7 +419,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         @Override
         public boolean runProcedure() {
             if (isStart) {
-                remainingActions = actions;
+                remainingActions = new ArrayList<>(actions);
                 for (int i = 0; i < actions.size(); i++) {
                     isStarts.set(i,true);
                 }
@@ -436,11 +455,10 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
 
     public static class NonLinearParallelAction extends NonLinearAction implements UnmappedActionGroup { //Runs actions in parallel
-        public List<NonLinearAction> remainingActions;
-        public List<NonLinearAction> actions;
-
+        public ArrayList<NonLinearAction> remainingActions;
+        public ArrayList<NonLinearAction> actions;
         public NonLinearParallelAction(NonLinearAction... actions) {
-            this.actions = Arrays.asList(actions);
+            this.actions = new ArrayList<>(Arrays.asList(actions));
             this.remainingActions = new ArrayList<>(this.actions);
             registerActions(actions);
         }
@@ -448,12 +466,20 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         @Override
         public boolean runProcedure() {
             if (isStart) {
-                remainingActions = actions;
+                remainingActions = new ArrayList<>(actions);
                 for (NonLinearAction action : remainingActions) {
                     action.reset();
                 }
             }
-            remainingActions = remainingActions.stream().filter(NonLinearAction::run).collect(Collectors.toList());
+            ArrayList<NonLinearAction> removingActions = new ArrayList<>();
+            for (NonLinearAction action:remainingActions){
+                if(!action.run()){
+                    removingActions.add(action);
+                }
+            }
+            for (NonLinearAction action:removingActions){
+                remainingActions.remove(action);
+            }
             return !remainingActions.isEmpty();
         }
 
@@ -503,14 +529,16 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 for (ReturningFunc<Boolean> condition : actions.keySet()) {
                     if (condition.call()) {
                         if (actions.get(condition) != currentAction) {
-                            currentAction.stop();
+                            if (Objects.nonNull(currentAction)) {
+                                currentAction.stop();
+                            }
                             currentAction = actions.get(condition);
+                        }
+                        if (Objects.nonNull(currentAction)) {
+                            currentAction.reset();
                         }
                         break;
                     }
-                }
-                if (Objects.nonNull(currentAction)) {
-                    currentAction.reset();
                 }
             } else {
                 for (ReturningFunc<Boolean> condition : actions.keySet()) {
@@ -622,12 +650,12 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                                 currentAction.stop();
                             }
                             currentAction = actions.get(condition);
+                            if (Objects.nonNull(currentAction)) {
+                                currentAction.reset();
+                            }
                         }
                         break;
                     }
-                }
-                if (Objects.nonNull(currentAction)) {
-                    currentAction.reset();
                 }
             }
             if (Objects.nonNull(currentAction)) {
@@ -662,9 +690,10 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         public PressTrigger(IfThen... conditionalPairs) {
             super(conditionalPairs);
             actions.clear();
-            isPressed = new ArrayList<>(conditionalPairs.length);
+            isPressed = new ArrayList<>();
             for (int i = 0; i < conditionalPairs.length; i++) {
                 int finalI = i;
+                isPressed.add(false);
                 actions.put(
                         () -> {
                             if (conditionalPairs[finalI].condition.call()) {
@@ -706,9 +735,10 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         public PersistentPressTrigger(IfThen... conditionalPairs) {
             super(conditionalPairs);
             actions.clear();
-            isPressed = new ArrayList<>(conditionalPairs.length);
+            isPressed = new ArrayList<>();
             for (int i = 0; i < conditionalPairs.length; i++) {
                 int finalI = i;
+                isPressed.add(false);
                 actions.put(
                         () -> {
                             if (conditionalPairs[finalI].condition.call()) {
@@ -939,7 +969,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             super(actions);
         }
         public void runOnce(){
-            reset(); run();
+            reset(); run(); conductActionModifications();
         }
         public void runLoop(Condition loopCondition) {
             while (loopCondition.call()) {
@@ -953,7 +983,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             super(actions);
         }
         public void runLinear() {
-            while (run()){}
+            while (run()){conductActionModifications();}
         }
     }
 }
