@@ -287,17 +287,20 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         public HashMap<String, Boolean> actuatorsCommanded = new HashMap<>();
         @Override
         boolean runProcedure() {
-            if (actuatorsCommanded.size()<actuators.size())
+            if (actuatorsCommanded.size()<actuators.size()) {
                 for (String key : actuators.keySet()) {
                     if (Objects.requireNonNull(actuators.get(key)).newTarget && !actuatorsCommanded.containsKey(key)) {
                         Objects.requireNonNull(actuators.get(key)).switchControl(Objects.requireNonNull(actuators.get(key)).defaultControlKey);
                         actuatorsCommanded.put(key, true);
                     }
                 }
+                return true;
+            }
             else{
                 removeFromGroup();
+                return false;
             }
-            return true;
+
         }
     }
 
@@ -996,9 +999,9 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             }
         }
     }
-    public static class ActionScheduler implements UnmappedActionGroup{
+    public static class ActionExecutor implements UnmappedActionGroup{
         public ArrayList<NonLinearAction> commandGroups;
-        public ActionScheduler(NonLinearAction...commandGroups){
+        public ActionExecutor(NonLinearAction...commandGroups){
             this.commandGroups=new ArrayList<>(Arrays.asList(commandGroups));
         }
         public void runOnce(){

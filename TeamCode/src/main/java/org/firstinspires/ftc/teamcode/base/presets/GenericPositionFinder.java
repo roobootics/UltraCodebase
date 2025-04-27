@@ -60,7 +60,7 @@ public class GenericPositionFinder extends LinearOpMode { //Used to find the spe
         }
 
         waitForStart();
-        new NonLinearActions.ActionScheduler(
+        new NonLinearActions.ActionExecutor(
                 new NonLinearActions.RunResettingLoop(
                         new NonLinearActions.PressTrigger(new NonLinearActions.IfThen(
                                 ()->(gamepad1.dpad_left),
@@ -72,10 +72,10 @@ public class GenericPositionFinder extends LinearOpMode { //Used to find the spe
                         )),
                         new NonLinearActions.ConditionalAction(
                                 conditions
-                        ),
-                        new NonLinearActions.PowerOnCommand(),
-                        new NonLinearActions.RunLoopRoutine(this::updateTelemetry)
-                )
+                        )
+                ),
+                new NonLinearActions.PowerOnCommand(),
+                new NonLinearActions.RunLoopRoutine(this::updateTelemetry)
         ).runLoop(this::opModeIsActive);
     }
 }
