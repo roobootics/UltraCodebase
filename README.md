@@ -1514,7 +1514,7 @@ Changes include:
  * Updated compileSdkVersion for apps
  * Prevent Wi-Fi from entering power saving mode
  * removed unused import from driver station
- * Corrrected "Dead zone" joystick code.
+ * Corrected "Dead zone" joystick code.
  * LED.getDeviceName and .getConnectionInfo() return null
  * apps check for ROBOCOL_VERSION mismatch
  * Fix for Telemetry also has off-by-one errors in its data string sizing / short size limitations error

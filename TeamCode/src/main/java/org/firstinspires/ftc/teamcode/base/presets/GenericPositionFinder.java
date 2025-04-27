@@ -55,25 +55,27 @@ public class GenericPositionFinder extends LinearOpMode { //Used to find the spe
             int finalI = i;
             conditions[i]=new NonLinearActions.IfThen(
                     ()->(selectedActuatorIndex==finalI),
-                    Objects.requireNonNull(actuators.get(actuatorNames.get(i))).triggeredDynamicAction(()->(gamepad1.left_bumper),()->(gamepad1.right_bumper),0.01)
+                    Objects.requireNonNull(actuators.get(actuatorNames.get(i))).triggeredDynamicAction(()->(gamepad1.left_bumper),()->(gamepad1.right_bumper),0.2)
             );
         }
 
         waitForStart();
-        new NonLinearActions.LoopActionScheduler(
-                new NonLinearActions.PressTrigger(new NonLinearActions.IfThen(
-                        ()->(gamepad1.dpad_left),
-                        new NonLinearActions.InstantAction(this::shiftSelectionLeft)
-                )),
-                new NonLinearActions.PressTrigger(new NonLinearActions.IfThen(
-                        ()->(gamepad1.dpad_right),
-                        new NonLinearActions.InstantAction(this::shiftSelectionRight)
-                )),
-                new NonLinearActions.ConditionalAction(
-                        conditions
-                ),
-                new NonLinearActions.PowerOnCommand(),
-                new NonLinearActions.RunLoopRoutine(this::updateTelemetry)
+        new NonLinearActions.ActionScheduler(
+                new NonLinearActions.RunResettingLoop(
+                        new NonLinearActions.PressTrigger(new NonLinearActions.IfThen(
+                                ()->(gamepad1.dpad_left),
+                                new NonLinearActions.InstantAction(this::shiftSelectionLeft)
+                        )),
+                        new NonLinearActions.PressTrigger(new NonLinearActions.IfThen(
+                                ()->(gamepad1.dpad_right),
+                                new NonLinearActions.InstantAction(this::shiftSelectionRight)
+                        )),
+                        new NonLinearActions.ConditionalAction(
+                                conditions
+                        ),
+                        new NonLinearActions.PowerOnCommand(),
+                        new NonLinearActions.RunLoopRoutine(this::updateTelemetry)
+                )
         ).runLoop(this::opModeIsActive);
     }
 }

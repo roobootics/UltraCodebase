@@ -6,7 +6,6 @@ import com.qualcomm.robotcore.hardware.Servo;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.base.Components.PartsConfig;
 import org.firstinspires.ftc.teamcode.base.Components.BotServo;
-import org.firstinspires.ftc.teamcode.base.LambdaInterfaces;
 
 public abstract class RunConfigs {
     public static class TestServo extends PartsConfig {
@@ -15,12 +14,12 @@ public abstract class RunConfigs {
             initialize(hardwareMap, telemetry);
             testServo=new BotServo(
                     "test", new String[]{"test"},
-                    ()->(0.0),()->(270.0),
+                    ()->(270.0),()->(0.0),
                     422, new String[]{},new double[]{},
                     new Servo.Direction[]{Servo.Direction.FORWARD},
                     270,
                     0
             );
-        };
+        }
     }
 }

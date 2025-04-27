@@ -20,6 +20,8 @@ import java.util.Objects;
 import org.firstinspires.ftc.teamcode.base.LambdaInterfaces.Condition;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+
 public abstract class NonLinearActions { //Command-based (or action-based) system
     public abstract static class NonLinearAction { //Base class for any action
         public boolean isBusy = false; //Indicates whether the action is active or not
@@ -30,7 +32,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             isStart = true;
         }
 
-        final public boolean run() { //Actual method called to run the action
+        final public boolean run() { //Actual method called to run the action, called repeatedly in a loop. Returns true if the action is not complete and false if it is.
             isBusy = runProcedure();
             isStart = false;
             if (!isBusy) {
@@ -68,6 +70,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         ArrayList<Procedure> scheduledAdditions = new ArrayList<>();
         default void addAction(K key, NonLinearAction action) { //Method that schedules the adding of an action for the end of the loop (required to avoid concurrent modifications)
             action.registerRemoveFromGroup(() -> this.removeAction(action));
+            action.reset();
             scheduledAdditions.add(()->addActionProcedure(key, action));
         }
 
@@ -282,12 +285,11 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
 
     public static class PowerOnCommand extends NonLinearAction { //This action automatically activates each actuator's default control functions when they are first commanded
         public HashMap<String, Boolean> actuatorsCommanded = new HashMap<>();
-
         @Override
         boolean runProcedure() {
             if (actuatorsCommanded.size()<actuators.size())
                 for (String key : actuators.keySet()) {
-                    if (Objects.requireNonNull(actuators.get(key)).newTarget && Boolean.FALSE.equals(actuatorsCommanded.get(key))) {
+                    if (Objects.requireNonNull(actuators.get(key)).newTarget && !actuatorsCommanded.containsKey(key)) {
                         Objects.requireNonNull(actuators.get(key)).switchControl(Objects.requireNonNull(actuators.get(key)).defaultControlKey);
                         actuatorsCommanded.put(key, true);
                     }
@@ -964,26 +966,63 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 )
         );
     }
-    public static class LoopActionScheduler extends NonLinearParallelAction{ //Group of actions that runs actions in parallel in a while loop (used for TeleOp)
-        public LoopActionScheduler(NonLinearAction...actions){
+    public static class RunResettingLoop extends NonLinearParallelAction{ //Group of actions that runs actions in parallel in a while loop and resets them each iteration (used for TeleOp)
+        public RunResettingLoop(NonLinearAction...actions){
             super(actions);
         }
-        public void runOnce(){
-            reset(); run(); conductActionModifications();
+        public boolean runProcedure(){
+            reset(); run();
+            return true;
         }
-        public void runLoop(Condition loopCondition) {
-            while (loopCondition.call()) {
+        public void stopProcedure(){
+            for (NonLinearAction action : actions){
+                action.stop();
+            }
+        }
+    }
+    public static class RunLoop extends NonLinearParallelAction{ //Group of actions that runs actions in parallel in a while loop
+        public RunLoop(NonLinearAction...actions){
+            super(actions);
+        }
+        public boolean runProcedure(){
+            for (NonLinearAction action : actions){
+                action.run();
+            }
+            return true;
+        }
+        public void stopProcedure(){
+            for (NonLinearAction action : actions){
+                action.stop();
+            }
+        }
+    }
+    public static class ActionScheduler implements UnmappedActionGroup{
+        public ArrayList<NonLinearAction> commandGroups;
+        public ActionScheduler(NonLinearAction...commandGroups){
+            this.commandGroups=new ArrayList<>(Arrays.asList(commandGroups));
+        }
+        public void runOnce(){
+            conductActionModifications();
+            this.commandGroups=commandGroups.stream().filter(NonLinearAction::run).collect(Collectors.toCollection(ArrayList::new));
+        }
+        public void runLoop(Condition condition){
+            while (condition.call()){
                 runOnce();
             }
             stop();
         }
-    }
-    public static class LinearActionScheduler extends NonLinearSequentialAction { //Group of actions that runs actions sequentially (used for Autonomous)
-        public LinearActionScheduler(NonLinearAction... actions) {
-            super(actions);
+        public void stop(){
+            for (NonLinearAction commandGroup : commandGroups){
+                commandGroup.stop();
+            }
         }
-        public void runLinear() {
-            while (run()){conductActionModifications();}
+        @Override
+        public void addActionProcedure(NonLinearAction commandGroup) {
+            commandGroups.add(commandGroup);
+        }
+        @Override
+        public void removeActionProcedure(NonLinearAction commandGroup) {
+            commandGroups.remove(commandGroup);
         }
     }
 }
