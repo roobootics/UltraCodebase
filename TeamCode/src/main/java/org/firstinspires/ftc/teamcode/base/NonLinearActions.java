@@ -536,7 +536,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                             if (Objects.nonNull(currentAction)) {
                                 currentAction.stop();
                             }
-                            actions.get(condition);
+                            currentAction=actions.get(condition);
                         }
                         if (Objects.nonNull(currentAction)) {
                             currentAction.reset();
@@ -778,7 +778,6 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             isPressed.remove(matchingIndex);
         }
     }
-
     public static class LoopForDuration extends NonLinearAction { //Loops an action for a certain duration
         double startTime;
         double duration;
@@ -804,7 +803,35 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             }
         }
     }
+    public static class LoopUntilTrue extends NonLinearAction { //Loops an action until a condition is met, or until an optional timeout is reached
+        double startTime;
+        Condition condition;
+        double timeout;
+        NonLinearAction action;
 
+        public LoopUntilTrue(Condition condition, NonLinearAction action, double timeout) {
+            this.condition = condition;
+            this.action = action;
+            this.timeout=timeout;
+        }
+        public LoopUntilTrue(Condition condition, NonLinearAction action) {
+            this(condition,action,Double.POSITIVE_INFINITY);
+        }
+        @Override
+        boolean runProcedure() {
+            if (isStart) {
+                startTime = timer.time();
+                action.reset();
+            }
+            if (!condition.call() || (timer.time() - startTime) < timeout) {
+                action.run();
+                return true;
+            } else {
+                action.stop();
+                return false;
+            }
+        }
+    }
     public abstract static class SleepUntilPose extends SleepUntilTrue { //Sleeps until the drivetrain and heading get a certain distance from a desired position and heading, or until an optional timeout is reached
         public static ReturningFunc<double[]> getPose;
         public static void setGetPose(ReturningFunc<double[]> getPose){
