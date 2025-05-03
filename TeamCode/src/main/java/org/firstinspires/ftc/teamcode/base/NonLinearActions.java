@@ -270,7 +270,6 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                         castedActuator.setPower(Objects.requireNonNull(castedActuator.powers.get(castedActuator.partNames[0])));
                     }
                     actuator.runControl();
-                    actuator.newTarget = false;
                 }
                 for (Components.Actuator<?> actuator : actuators.values()) {
                     telemetry.addData(actuator.name + " target", actuator.target);
@@ -537,7 +536,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                             if (Objects.nonNull(currentAction)) {
                                 currentAction.stop();
                             }
-                            currentAction = actions.get(condition);
+                            actions.get(condition);
                         }
                         if (Objects.nonNull(currentAction)) {
                             currentAction.reset();
@@ -974,7 +973,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             super(actions);
         }
         public boolean runProcedure(){
-            reset(); run();
+            reset(); super.runProcedure();
             return true;
         }
         public void stopProcedure(){
@@ -1003,10 +1002,14 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         public ArrayList<NonLinearAction> commandGroups;
         public ActionExecutor(NonLinearAction...commandGroups){
             this.commandGroups=new ArrayList<>(Arrays.asList(commandGroups));
+            registerActions(commandGroups);
         }
         public void runOnce(){
             conductActionModifications();
             this.commandGroups=commandGroups.stream().filter(NonLinearAction::run).collect(Collectors.toCollection(ArrayList::new));
+            for (Components.Actuator<?> actuator : actuators.values()) {
+                actuator.newTarget = false;
+            }
         }
         public void runLoop(Condition condition){
             while (condition.call()){

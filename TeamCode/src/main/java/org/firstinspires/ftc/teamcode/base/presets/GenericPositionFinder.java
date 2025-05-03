@@ -12,6 +12,7 @@ import org.firstinspires.ftc.teamcode.base.programs.RunConfigs;
 
 import java.util.ArrayList;
 import java.util.Objects;
+import static org.firstinspires.ftc.teamcode.base.programs.RunConfigs.TestServo.testServo;
 @TeleOp
 public class GenericPositionFinder extends LinearOpMode { //Used to find the specific positions that we will end up setting actuators to. Allows one to select an actuator and move it.
     public int selectedActuatorIndex = 0;
@@ -24,6 +25,8 @@ public class GenericPositionFinder extends LinearOpMode { //Used to find the spe
         telemetry.addLine(actuatorNames.get(selectedActuatorIndex));
         telemetry.addData("position", Objects.requireNonNull(actuators.get(actuatorNames.get(selectedActuatorIndex))).getCurrentPosition());
         telemetry.addData("e",Objects.requireNonNull(actuators.get(actuatorNames.get(selectedActuatorIndex))).getTarget());
+        telemetry.addData("a",testServo.parts.get("test").getPosition());
+        telemetry.addData("g",gamepad1.left_bumper);
         telemetry.update();
     }
     public void shiftSelectionRight(){
@@ -55,7 +58,7 @@ public class GenericPositionFinder extends LinearOpMode { //Used to find the spe
             int finalI = i;
             conditions[i]=new NonLinearActions.IfThen(
                     ()->(selectedActuatorIndex==finalI),
-                    Objects.requireNonNull(actuators.get(actuatorNames.get(i))).triggeredDynamicAction(()->(gamepad1.left_bumper),()->(gamepad1.right_bumper),0.2)
+                    Objects.requireNonNull(actuators.get(actuatorNames.get(i))).triggeredDynamicAction(()->(gamepad1.left_bumper),()->(gamepad1.right_bumper),0.01)
             );
         }
 
@@ -74,8 +77,8 @@ public class GenericPositionFinder extends LinearOpMode { //Used to find the spe
                                 conditions
                         )
                 ),
-                new NonLinearActions.PowerOnCommand(),
-                new NonLinearActions.RunLoopRoutine(this::updateTelemetry)
+                new NonLinearActions.RunLoopRoutine(this::updateTelemetry),
+                new NonLinearActions.PowerOnCommand()
         ).runLoop(this::opModeIsActive);
     }
 }

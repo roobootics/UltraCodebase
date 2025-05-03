@@ -116,9 +116,6 @@ public abstract class Components {
                         double errorTol, double defaultTimeout,
                         String[] keyPositionKeys,
                         double[] keyPositionValues){
-            for (String name: Actuator.this.partNames){
-                Actuator.this.getCurrentPositions.put(name,()->(positionConversion.apply(getCurrentPosition.apply(parts.get(name))))); //The getCurrentPosition function is copied, one for each of the actuator's parts. Position conversion is also applied
-            }
             this.name=actuatorName;
             this.partNames=partNames;
             this.maxTargetFunc = ()->(maxTargetFunc.call()+offset);
@@ -130,6 +127,9 @@ public abstract class Components {
             }
             for (String name:partNames){
                 this.parts.put(name,Components.hardwareMap.get(type,name)); //Can't do E.class instead of using the parameter 'type' because of generic type erasure
+            }
+            for (String name: partNames){
+                this.getCurrentPositions.put(name,()->(positionConversion.apply(getCurrentPosition.apply(parts.get(name))))); //The getCurrentPosition function is copied, one for each of the actuator's parts. Position conversion is also applied
             }
             actuators.put(name,this);
         }
@@ -513,7 +513,7 @@ public abstract class Components {
         public BotServo(String name, String[] names, Function<Servo, Double> getCurrentPosition, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, double errorTol, double defaultTimeout, String[] keyPositionKeys, double[] keyPositionValues, Servo.Direction[] directions, double range, double initialTarget, String[] controlFuncKeys, List<ControlFunction<BotServo>>... controlFuncs) {
             super(name, Servo.class, names, getCurrentPosition, maxTargetFunc, minTargetFunc, errorTol, defaultTimeout, keyPositionKeys, keyPositionValues);
             this.positionConversion=(Double pos)->(pos*range);
-            this.positionConversionInverse=(Double pos)->(pos*range);
+            this.positionConversionInverse=(Double pos)->(pos/range);
             for (int i=0;i<directions.length;i++){
                 Objects.requireNonNull(parts.get(names[i])).setDirection(directions[i]);
             }
