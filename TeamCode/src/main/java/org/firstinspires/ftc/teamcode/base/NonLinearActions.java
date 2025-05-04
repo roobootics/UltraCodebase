@@ -823,7 +823,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 startTime = timer.time();
                 action.reset();
             }
-            if (!condition.call() || (timer.time() - startTime) < timeout) {
+            if (!condition.call() && (timer.time() - startTime) < timeout) {
                 action.run();
                 return true;
             } else {
@@ -1025,9 +1025,9 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             }
         }
     }
-    public static class ActionExecutor implements UnmappedActionGroup{
+    public static class ParallelActionExecutor implements UnmappedActionGroup{
         public ArrayList<NonLinearAction> commandGroups;
-        public ActionExecutor(NonLinearAction...commandGroups){
+        public ParallelActionExecutor(NonLinearAction...commandGroups){
             this.commandGroups=new ArrayList<>(Arrays.asList(commandGroups));
             registerActions(commandGroups);
         }

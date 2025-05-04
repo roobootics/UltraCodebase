@@ -80,7 +80,7 @@ public abstract class Components {
         //Max and min targets. They are dynamic functions since the max position for an actuator may not be the same. An in-game extension limit may not apply based on the direction of the actuator, for example.
         public double errorTol; //Error tolerance for when the actuator is commanded to a position
         public double defaultTimeout; //Default time waited when an actuator is commanded to a position before ending the action.
-        public boolean isPowered = true;
+        public boolean lockActuationState = true;
 
         public HashMap<String,Double> keyPositions = new HashMap<>(); //Stores key positions, like 'transferPosition,' etc.
 
@@ -324,7 +324,7 @@ public abstract class Components {
         }
         @Actuate
         public void setPower(double power, String name){ //Sets power to a specific part
-            if (isPowered){
+            if (lockActuationState){
                 power=Math.max(Math.min(power, maxPowerFunc.call()), minPowerFunc.call());
                 E part = parts.get(name);
                 assert part != null;
@@ -339,7 +339,7 @@ public abstract class Components {
         }
         @Actuate
         public void setPower(double power){ //Sets power to all synchronized parts at once
-            if (isPowered) {
+            if (lockActuationState) {
                 power=Math.max(Math.min(power, maxPowerFunc.call()), minPowerFunc.call());
                 if (Math.abs(power-Objects.requireNonNull(this.powers.get(partNames[0])))>0.05) {
                     for (String name:partNames) {
@@ -525,7 +525,7 @@ public abstract class Components {
         @Actuate
         public void setPosition(double position){
             position=Math.max(minTargetFunc.call(),Math.min(position, maxTargetFunc.call()));
-            if (isPowered && position!=currCommandedPos){
+            if (lockActuationState && position!=currCommandedPos){
                 currCommandedPos=position;
                 for (Servo part:parts.values()){part.setPosition(positionConversionInverse.apply(position));}
                 if (timeBasedLocalization){

@@ -63,7 +63,7 @@ public class GenericPositionFinder extends LinearOpMode { //Used to find the spe
         }
 
         waitForStart();
-        new NonLinearActions.ActionExecutor(
+        new NonLinearActions.ParallelActionExecutor(
                 new NonLinearActions.RunResettingLoop(
                         new NonLinearActions.PressTrigger(new NonLinearActions.IfThen(
                                 ()->(gamepad1.dpad_left),
