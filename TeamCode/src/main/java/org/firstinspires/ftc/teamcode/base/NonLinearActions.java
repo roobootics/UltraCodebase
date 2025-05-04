@@ -241,43 +241,19 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             );
         }
     }
-    public static class RunLoopRoutine extends ContinuousAction { //This action runs each actuator's control functions and updates the telemetry using the updateTelemetry function it is provided
-        public RunLoopRoutine(Procedure updateTelemetry) {
-            super(() -> {
-                for (Components.Actuator<?> actuator : actuators.values()) {
-                    if (actuator.dynamicTargetBoundaries) { //If the actuator's target boundaries can change, this will ensure that the actuator's target never falls outside of the boundaries
-                        actuator.setTarget(actuator.target);
-                    }
-                    if (actuator instanceof Components.CRActuator && ((Components.CRActuator<?>) actuator).dynamicPowerBoundaries) { //If the CRActuator's power boundaries can change, this will ensure that the CRActuator's power never falls outside of the boundaries
-                        Components.CRActuator<?> castedActuator = ((Components.CRActuator<?>) actuator);
-                        castedActuator.setPower(Objects.requireNonNull(castedActuator.powers.get(castedActuator.partNames[0])));
-                    }
-                    actuator.runControl();
-                    actuator.newTarget = false;
-                }
-                updateTelemetry.call();
-            });
+    public static class WriteToTelemetry extends ContinuousAction { //This action runs each actuator's control functions and updates the telemetry using the updateTelemetry function it is provided
+        public WriteToTelemetry(Procedure updateTelemetry) {
+            super(updateTelemetry);
         }
 
-        public RunLoopRoutine() {
+        public WriteToTelemetry() {
             super(() -> {
-                for (Components.Actuator<?> actuator : actuators.values()) {
-                    if (actuator.dynamicTargetBoundaries) {
-                        actuator.setTarget(actuator.target);
-                    }
-                    if (actuator instanceof Components.CRActuator && ((Components.CRActuator<?>) actuator).dynamicPowerBoundaries) {
-                        Components.CRActuator<?> castedActuator = ((Components.CRActuator<?>) actuator);
-                        castedActuator.setPower(Objects.requireNonNull(castedActuator.powers.get(castedActuator.partNames[0])));
-                    }
-                    actuator.runControl();
-                }
                 for (Components.Actuator<?> actuator : actuators.values()) {
                     telemetry.addData(actuator.name + " target", actuator.target);
                     telemetry.addData(actuator.name + " instant target", actuator.instantTarget);
                     telemetry.addData(actuator.name + " current position", actuator.getCurrentPosition());
                     telemetry.addData("", "");
                 }
-                telemetry.update();
             });
         }
     }
@@ -1035,8 +1011,17 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             conductActionModifications();
             this.commandGroups=commandGroups.stream().filter(NonLinearAction::run).collect(Collectors.toCollection(ArrayList::new));
             for (Components.Actuator<?> actuator : actuators.values()) {
+                if (actuator.dynamicTargetBoundaries) { //If the actuator's target boundaries can change, this will ensure that the actuator's target never falls outside of the boundaries
+                    actuator.setTarget(actuator.target);
+                }
+                if (actuator instanceof Components.CRActuator && ((Components.CRActuator<?>) actuator).dynamicPowerBoundaries) { //If the CRActuator's power boundaries can change, this will ensure that the CRActuator's power never falls outside of the boundaries
+                    Components.CRActuator<?> castedActuator = ((Components.CRActuator<?>) actuator);
+                    castedActuator.setPower(Objects.requireNonNull(castedActuator.powers.get(castedActuator.partNames[0])));
+                }
+                actuator.runControl();
                 actuator.newTarget = false;
             }
+            telemetry.update();
         }
         public void runLoop(Condition condition){
             while (condition.call()){

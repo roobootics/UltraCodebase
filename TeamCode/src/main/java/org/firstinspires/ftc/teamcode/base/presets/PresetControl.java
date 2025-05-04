@@ -218,7 +218,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
         @Override
         protected void runProcedure() {
             double currentPosition = parentActuator.getCurrentPosition();
-            if (Math.abs(parentActuator.instantTarget-currentPosition)>1){
+            if (Math.abs(parentActuator.instantTarget-currentPosition)>parentActuator.errorTol){
                 parentActuator.setPower(powerFunc.call()*Math.signum(parentActuator.instantTarget-currentPosition));
             }
         }
