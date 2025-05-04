@@ -80,7 +80,7 @@ public abstract class Components {
         //Max and min targets. They are dynamic functions since the max position for an actuator may not be the same. An in-game extension limit may not apply based on the direction of the actuator, for example.
         public double errorTol; //Error tolerance for when the actuator is commanded to a position
         public double defaultTimeout; //Default time waited when an actuator is commanded to a position before ending the action.
-        public boolean actuationStateUnlocked = true;
+        public boolean actuationStateUnlocked = true; //If set to false, methods tagged with @Actuate should not have an effect; it locks the actuator in whatever power/position state it's in.
         public HashMap<String,Double> keyPositions = new HashMap<>(); //Stores key positions, like 'transferPosition,' etc.
 
         public HashMap<String,ReturningFunc<Double>> getCurrentPositions = new HashMap<>(); //Map of methods to get the current positions of each of the actuator's parts. (They may have slightly different positions each)
@@ -172,8 +172,11 @@ public abstract class Components {
             }
             currControlFuncKey=key;
         }
-        public void toggleActuationLock(){
-            actuationStateUnlocked=!actuationStateUnlocked;
+        public void lockActuationState(){
+            actuationStateUnlocked=false;
+        }
+        public void unlockActuationState(){
+            actuationStateUnlocked=true;
         }
         public class SetTargetAction extends CompoundAction { //Action to set the target, then wait until the position of the actuator is a certain distance from the target, or until a set timeout
             public SetTargetAction(ReturningFunc<Double> targetFunc, double timeout){
