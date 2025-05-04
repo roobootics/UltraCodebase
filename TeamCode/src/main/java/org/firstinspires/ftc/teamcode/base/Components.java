@@ -80,8 +80,7 @@ public abstract class Components {
         //Max and min targets. They are dynamic functions since the max position for an actuator may not be the same. An in-game extension limit may not apply based on the direction of the actuator, for example.
         public double errorTol; //Error tolerance for when the actuator is commanded to a position
         public double defaultTimeout; //Default time waited when an actuator is commanded to a position before ending the action.
-        public boolean lockActuationState = true;
-
+        public boolean actuationStateUnlocked = true;
         public HashMap<String,Double> keyPositions = new HashMap<>(); //Stores key positions, like 'transferPosition,' etc.
 
         public HashMap<String,ReturningFunc<Double>> getCurrentPositions = new HashMap<>(); //Map of methods to get the current positions of each of the actuator's parts. (They may have slightly different positions each)
@@ -172,6 +171,9 @@ public abstract class Components {
                 func.stopAndReset();
             }
             currControlFuncKey=key;
+        }
+        public void toggleActuationLock(){
+            actuationStateUnlocked=!actuationStateUnlocked;
         }
         public class SetTargetAction extends CompoundAction { //Action to set the target, then wait until the position of the actuator is a certain distance from the target, or until a set timeout
             public SetTargetAction(ReturningFunc<Double> targetFunc, double timeout){
@@ -324,7 +326,7 @@ public abstract class Components {
         }
         @Actuate
         public void setPower(double power, String name){ //Sets power to a specific part
-            if (lockActuationState){
+            if (actuationStateUnlocked){
                 power=Math.max(Math.min(power, maxPowerFunc.call()), minPowerFunc.call());
                 E part = parts.get(name);
                 assert part != null;
@@ -339,7 +341,7 @@ public abstract class Components {
         }
         @Actuate
         public void setPower(double power){ //Sets power to all synchronized parts at once
-            if (lockActuationState) {
+            if (actuationStateUnlocked) {
                 power=Math.max(Math.min(power, maxPowerFunc.call()), minPowerFunc.call());
                 if (Math.abs(power-Objects.requireNonNull(this.powers.get(partNames[0])))>0.05) {
                     for (String name:partNames) {
@@ -525,7 +527,7 @@ public abstract class Components {
         @Actuate
         public void setPosition(double position){
             position=Math.max(minTargetFunc.call(),Math.min(position, maxTargetFunc.call()));
-            if (lockActuationState && position!=currCommandedPos){
+            if (actuationStateUnlocked && position!=currCommandedPos){
                 currCommandedPos=position;
                 for (Servo part:parts.values()){part.setPosition(positionConversionInverse.apply(position));}
                 if (timeBasedLocalization){
