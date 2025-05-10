@@ -24,9 +24,6 @@ public class GenericPositionFinder extends LinearOpMode { //Used to find the spe
     public void updateTelemetry(){
         telemetry.addLine(actuatorNames.get(selectedActuatorIndex));
         telemetry.addData("position", Objects.requireNonNull(actuators.get(actuatorNames.get(selectedActuatorIndex))).getCurrentPosition());
-        telemetry.addData("e",Objects.requireNonNull(actuators.get(actuatorNames.get(selectedActuatorIndex))).getTarget());
-        telemetry.addData("a",testServo.parts.get("test").getPosition());
-        telemetry.addData("g",gamepad1.left_bumper);
     }
     public void shiftSelectionRight(){
         if (selectedActuatorIndex<actuatorNames.size()-1){
@@ -57,7 +54,7 @@ public class GenericPositionFinder extends LinearOpMode { //Used to find the spe
             int finalI = i;
             conditions[i]=new NonLinearActions.IfThen(
                     ()->(selectedActuatorIndex==finalI),
-                    Objects.requireNonNull(actuators.get(actuatorNames.get(i))).triggeredDynamicAction(()->(gamepad1.left_bumper),()->(gamepad1.right_bumper),0.01)
+                    Objects.requireNonNull(actuators.get(actuatorNames.get(i))).triggeredDynamicAction(()->(gamepad1.left_bumper),()->(gamepad1.right_bumper),0.1)
             );
         }
 

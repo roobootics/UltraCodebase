@@ -15,7 +15,7 @@ public abstract class RunConfigs {
             testServo=new BotServo(
                     "test", new String[]{"test"},
                     ()->(270.0),()->(0.0),
-                    422, new String[]{},new double[]{},
+                    270, 5,new String[]{},new double[]{},
                     new Servo.Direction[]{Servo.Direction.FORWARD},
                     270,
                     0

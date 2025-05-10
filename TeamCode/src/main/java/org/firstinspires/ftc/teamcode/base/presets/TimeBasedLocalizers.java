@@ -5,24 +5,29 @@ import static org.firstinspires.ftc.teamcode.base.Components.timer;
 
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
+
+import org.firstinspires.ftc.teamcode.base.Components;
+
 public abstract class TimeBasedLocalizers{
     public static class ServoTimeBasedLocalizer{ //Calculates position of a servo based on time
         public double ABS_SERVO_SPEED;
         public double prevPosition;
         public double prevTime;
-        public ServoTimeBasedLocalizer(double servoSpeed){
+        public Components.BotServo actuator;
+        public ServoTimeBasedLocalizer(double servoSpeed,Components.BotServo actuator){
             this.ABS_SERVO_SPEED=servoSpeed;
+            this.actuator=actuator;
         }
         public double getCurrentPosition(Servo servo){
             if (!Double.isNaN(servo.getPosition())){
-                double servoSpeed = Math.signum(servo.getPosition()-prevPosition)*ABS_SERVO_SPEED;
+                double servoSpeed = Math.signum(actuator.positionConversionInverse.apply(actuator.getPosition())-prevPosition)*ABS_SERVO_SPEED;
                 double time=timer.time();
-                double change = servoSpeed*(time-prevTime);
+                double change = actuator.positionConversionInverse.apply(servoSpeed)*(time-prevTime);
                 if (Math.signum(change)==1){
-                    prevPosition=Math.min(servo.getPosition(),prevPosition+change);
+                    prevPosition=Math.min(actuator.positionConversionInverse.apply(actuator.getPosition()),prevPosition+change);
                 }
                 else if (Math.signum(change)==-1){
-                    prevPosition=Math.max(servo.getPosition(),prevPosition+change);
+                    prevPosition=Math.max(actuator.positionConversionInverse.apply(actuator.getPosition()),prevPosition+change);
                 }
                 prevTime=time;
             }
