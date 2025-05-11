@@ -530,7 +530,7 @@ public abstract class Components {
         public BotServo(String name, String[] names, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, double servoSpeed, double defaultTimeout, String[] keyPositionKeys, double[] keyPositionValues, Servo.Direction[] directions, double range, double initialTarget) {
             this(name,names,(Servo e)->(0.0),maxTargetFunc,minTargetFunc,0.01,defaultTimeout,keyPositionKeys,keyPositionValues,directions,range, initialTarget, new String[]{"setPos"}, new ArrayList<>(Collections.singleton(new ServoControl())));
             for (String partName: partNames){
-                this.getCurrentPositions.put(partName,()->(positionConversion.apply(new TimeBasedLocalizers.ServoTimeBasedLocalizer(servoSpeed,this).getCurrentPosition(parts.get(partName))))); //The getCurrentPosition function is copied, one for each of the actuator's parts. Position conversion is also applied
+                this.getCurrentPositions.put(partName,()->(positionConversion.apply(new TimeBasedLocalizers.ServoTimeBasedLocalizer(servoSpeed,this).getCurrentPosition(Objects.requireNonNull(parts.get(partName)))))); //The getCurrentPosition function is copied, one for each of the actuator's parts. Position conversion is also applied
             }
         }
         @Actuate
