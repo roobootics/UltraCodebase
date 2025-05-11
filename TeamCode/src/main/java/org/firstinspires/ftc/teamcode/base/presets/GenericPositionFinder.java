@@ -3,18 +3,14 @@ package org.firstinspires.ftc.teamcode.base.presets;
 import static org.firstinspires.ftc.teamcode.base.Components.actuators;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.base.Components;
 
 import org.firstinspires.ftc.teamcode.base.NonLinearActions;
-import org.firstinspires.ftc.teamcode.base.programs.RunConfigs;
 
 import java.util.ArrayList;
 import java.util.Objects;
-import static org.firstinspires.ftc.teamcode.base.programs.RunConfigs.TestServo.testServo;
-@TeleOp
-public class GenericPositionFinder extends LinearOpMode { //Used to find the specific positions that we will end up setting actuators to. Allows one to select an actuator and move it.
+public abstract class GenericPositionFinder extends LinearOpMode { //Used to find the specific positions that we will end up setting actuators to. Allows one to select an actuator and move it.
     public int selectedActuatorIndex = 0;
     public ArrayList<String> actuatorNames = new ArrayList<>();
     @Override
@@ -36,7 +32,6 @@ public class GenericPositionFinder extends LinearOpMode { //Used to find the spe
         }
     }
     public void run(){
-        RunConfigs.TestServo.init(hardwareMap,telemetry);
         for (String name:actuators.keySet()){
             if (!(actuators.get(name) instanceof Components.BotMotor)){
                 Objects.requireNonNull(actuators.get(name)).switchControl(Objects.requireNonNull(actuators.get(name)).defaultControlKey);
