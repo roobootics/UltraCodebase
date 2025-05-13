@@ -1,6 +1,5 @@
 package org.firstinspires.ftc.teamcode.base;
 
-import com.qualcomm.hardware.lynx.LynxServoController;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -8,7 +7,6 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareDevice;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.hardware.ServoImpl;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
@@ -83,16 +81,18 @@ public abstract class Components {
         public double errorTol; //Error tolerance for when the actuator is commanded to a position
         public double defaultTimeout; //Default time waited when an actuator is commanded to a position before ending the action.
         public boolean actuationStateUnlocked = true; //If set to false, methods tagged with @Actuate should not have an effect; it locks the actuator in whatever power/position state it's in.
+        public boolean targetStateUnlocked = true; //If set to false, the actuator's target cannot change.
         public HashMap<String,Double> keyPositions = new HashMap<>(); //Stores key positions, like 'transferPosition,' etc.
 
         public HashMap<String,ReturningFunc<Double>> getCurrentPositions = new HashMap<>(); //Map of methods to get the current positions of each of the actuator's parts. (They may have slightly different positions each)
+        private final HashMap<String,Double> currentPositions = new HashMap<>(); //For optimization, an actuator's current position can only be calculated once a loop. If you call it more than once, the output from the first call is stored and given again
         public ControlFuncRegister<?> funcRegister;
         public String currControlFuncKey;
         public String defaultControlKey;
         public Function<Double,Double> positionConversion = (Double pos)->(pos); //Allows one to apply unit conversion on the getCurrentPosition method to return it in a different unit (e.g ticks to inches)
         public Function<Double,Double> positionConversionInverse = (Double pos)->(pos);
         public boolean timeBasedLocalization; //Indicates whether the getCurrentPosition method of the actuator calculates the position based on time as opposed to an encoder, which is important to know.
-        public boolean dynamicTargetBoundaries=false; //Indicates whether the max and min targets can change. Useful to know if they don't
+        public boolean dynamicTargetBoundaries=false; //Indicates whether the max and min targets can change for a specific actuator. Useful to know if they don't
 
         public class ControlFuncRegister<T extends Actuator<E>>{ //Registers control functions. Parametrized to the subclass of Actuator that is using it. The functions cannot be stored directly in the actuator because of generic type erasure and generic invariance. This approach is cleaner
             public HashMap<String, List<ControlFunction<T>>> controlFuncsMap = new HashMap<>(); //Map with lists of control functions paired with names.
@@ -128,31 +128,39 @@ public abstract class Components {
             }
             for (String name:partNames){
                 this.parts.put(name,Components.hardwareMap.get(type,name)); //Can't do E.class instead of using the parameter 'type' because of generic type erasure
-            }
-            for (String name: partNames){
                 this.getCurrentPositions.put(name,()->(positionConversion.apply(getCurrentPosition.apply(parts.get(name))))); //The getCurrentPosition function is copied, one for each of the actuator's parts. Position conversion is also applied
+                this.currentPositions.put(name,Double.NaN);
             }
             actuators.put(name,this);
         }
         public void setTarget(double target){
-            target=target+offset;
-            target=Math.max(minTargetFunc.call(),Math.min(target, maxTargetFunc.call()));
-            if (target!=this.target) {
-                this.target = target;
-                this.instantTarget = target;
-                newTarget = true;
+            if (targetStateUnlocked){
+                target=target+offset;
+                target=Math.max(minTargetFunc.call(),Math.min(target, maxTargetFunc.call()));
+                if (target!=this.target) {
+                    this.target = target;
+                    this.instantTarget = target;
+                    newTarget = true;
+                }
             }
         }
         public double getTarget(){
             return target;
         }
         public double getCurrentPosition(String name){ //Gets the position of a specific part
-            return Objects.requireNonNull(getCurrentPositions.get(name)).call();
+            if (Double.isNaN(Objects.requireNonNull(currentPositions.get(name)))){
+                double pos = Objects.requireNonNull(getCurrentPositions.get(name)).call();
+                currentPositions.put(name,pos);
+                return pos;
+            }
+            else{
+                return Objects.requireNonNull(currentPositions.get(name));
+            }
         }
         public double getCurrentPosition(){ //Gets the avg position of all synchronized parts
             double avg = 0;
-            for (ReturningFunc<Double> func: getCurrentPositions.values()){
-                avg+=func.call();
+            for (String name : partNames){
+                avg+=getCurrentPosition(name);
             }
             return avg/getCurrentPositions.values().size();
         }
@@ -179,6 +187,15 @@ public abstract class Components {
         }
         public void unlockActuationState(){
             actuationStateUnlocked=true;
+        }
+        public void lockTargetState(){
+            targetStateUnlocked=false;
+        }
+        public void unlockTargetState(){
+            targetStateUnlocked=true;
+        }
+        public void resetCurrentPositions(){
+            currentPositions.replaceAll((k, v) -> Double.NaN);
         }
         public class SetTargetAction extends CompoundAction { //Action to set the target, then wait until the position of the actuator is a certain distance from the target, or until a set timeout
             public SetTargetAction(ReturningFunc<Double> targetFunc, double timeout){
