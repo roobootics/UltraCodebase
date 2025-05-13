@@ -1018,6 +1018,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                     castedActuator.setPower(Objects.requireNonNull(castedActuator.powers.get(castedActuator.partNames[0])));
                 }
                 actuator.runControl();
+                actuator.resetCurrentPositions();
                 actuator.newTarget = false;
             }
             telemetry.update();
