@@ -807,6 +807,58 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             }
         }
     }
+    public static class ResetAndLoopForDuration extends NonLinearAction { //Loops an action for a certain duration
+        double startTime;
+        double duration;
+        NonLinearAction action;
+
+        public ResetAndLoopForDuration(double duration, NonLinearAction action) {
+            this.duration = duration;
+            this.action = action;
+        }
+
+        @Override
+        boolean runProcedure() {
+            if (isStart) {
+                startTime = timer.time();
+            }
+            if ((timer.time() - startTime) < duration) {
+                action.reset(); action.run();
+                return true;
+            } else {
+                action.stop();
+                return false;
+            }
+        }
+    }
+    public static class ResetAndLoopUntilTrue extends NonLinearAction { //Loops an action until a condition is met, or until an optional timeout is reached
+        double startTime;
+        Condition condition;
+        double timeout;
+        NonLinearAction action;
+
+        public ResetAndLoopUntilTrue(Condition condition, NonLinearAction action, double timeout) {
+            this.condition = condition;
+            this.action = action;
+            this.timeout=timeout;
+        }
+        public ResetAndLoopUntilTrue(Condition condition, NonLinearAction action) {
+            this(condition,action,Double.POSITIVE_INFINITY);
+        }
+        @Override
+        boolean runProcedure() {
+            if (isStart) {
+                startTime = timer.time();
+            }
+            if (!condition.call() && (timer.time() - startTime) < timeout) {
+                action.reset(); action.run();
+                return true;
+            } else {
+                action.stop();
+                return false;
+            }
+        }
+    }
     public abstract static class SleepUntilPose extends SleepUntilTrue { //Sleeps until the drivetrain and heading get a certain distance from a desired position and heading, or until an optional timeout is reached
         public static ReturningFunc<double[]> getPose;
         public static void setGetPose(ReturningFunc<double[]> getPose){
