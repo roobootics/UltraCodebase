@@ -320,6 +320,18 @@ public abstract class Components {
         public InstantAction switchControlAction(String controlKey){
             return new InstantAction(()->this.switchControl(controlKey));
         }
+        public InstantAction lockActuationAction(){
+            return new InstantAction(this::lockActuationState);
+        }
+        public InstantAction unlockActuationAction(){
+            return new InstantAction(this::unlockActuationState);
+        }
+        public InstantAction lockTargetAction(){
+            return new InstantAction(this::lockTargetState);
+        }
+        public InstantAction unlockTargetAction(){
+            return new InstantAction(this::unlockTargetState);
+        }
     }
     //Each of the subclasses of Actuator will have some generic constructors and some constructors where information is preset.
     public abstract static class CRActuator<E extends DcMotorSimple> extends Actuator<E>{ //Type of Actuator that works for continuous rotation parts, like DcMotorEx and CRServo

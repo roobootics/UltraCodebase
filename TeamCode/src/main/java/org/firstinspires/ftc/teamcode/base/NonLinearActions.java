@@ -86,6 +86,12 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 action.registerRemoveFromGroup(() -> this.removeAction(action));
             }
         }
+        default InstantAction addToGroupAction(K key, NonLinearAction action){
+            return new InstantAction(()->addAction(key,action));
+        }
+        default InstantAction removeFromGroupAction(NonLinearAction action){
+            return new InstantAction(()->removeAction(action));
+        }
     }
 
     public interface UnmappedActionGroup { //NonLinearActions that run an unmapped set of other actions should implement this. (ParallelActions)
@@ -107,6 +113,12 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 action.registerRemoveFromGroup(() -> this.removeAction(action));
             }
         }
+        default InstantAction addToGroupAction(NonLinearAction action){
+            return new InstantAction(()->addAction(action));
+        }
+        default InstantAction removeFromGroupAction(NonLinearAction action){
+            return new InstantAction(()->removeAction(action));
+        }
     }
     public static void conductActionModifications(){ //Adds and removes all actions that need to be added or removed. Called by top-level action schedulers at the end of each loop iteration
         for (Procedure add:MappedActionGroup.scheduledAdditions){
@@ -125,10 +137,6 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         MappedActionGroup.scheduledRemovals.clear();
         UnmappedActionGroup.scheduledAdditions.clear();
         UnmappedActionGroup.scheduledRemovals.clear();
-    }
-    public enum ScheduleType{
-        ADD,
-        REMOVE
     }
 
     //TEMPLATE ACTIONS
@@ -200,46 +208,6 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
 
     //PRELOADED ACTIONS
-    public static class UnmappedScheduleAction extends CompoundAction{ //Allows one to schedule the adding or removing of an action from an unmapped action group when a condition is met, or if a timeout is reached
-        public UnmappedScheduleAction(UnmappedActionGroup group, Condition condition, NonLinearAction action, ScheduleType type, double timeout){
-            Procedure schedule;
-            if (type==ScheduleType.ADD) schedule = ()->group.addAction(action); else schedule=()->group.removeAction(action);
-            sequence = new NonLinearSequentialAction(
-                    new SleepUntilTrue(condition,timeout),
-                    new InstantAction(schedule),
-                    new InstantAction(this::removeFromGroup)
-            );
-        }
-        public UnmappedScheduleAction(UnmappedActionGroup group, Condition condition, NonLinearAction action, ScheduleType type){
-            Procedure schedule;
-            if (type==ScheduleType.ADD) schedule = ()->group.addAction(action); else schedule=()->group.removeAction(action);
-            sequence = new NonLinearSequentialAction(
-                    new SleepUntilTrue(condition),
-                    new InstantAction(schedule),
-                    new InstantAction(this::removeFromGroup)
-            );
-        }
-    }
-    public static class MappedScheduleAction<E> extends CompoundAction{ //Allows one to schedule the adding or removing of an action from a mapped action group when a condition is met, or if a timeout is reached
-        public MappedScheduleAction(MappedActionGroup<E> group, Condition condition, E key, NonLinearAction action, ScheduleType type, double timeout){
-            Procedure schedule;
-            if (type==ScheduleType.ADD) schedule = ()->group.addAction(key,action); else schedule=()->group.removeAction(action);
-            sequence = new NonLinearSequentialAction(
-                    new SleepUntilTrue(condition,timeout),
-                    new InstantAction(schedule),
-                    new InstantAction(this::removeFromGroup)
-            );
-        }
-        public MappedScheduleAction(MappedActionGroup<E> group, Condition condition, E key, NonLinearAction action, ScheduleType type){
-            Procedure schedule;
-            if (type==ScheduleType.ADD) schedule = ()->group.addAction(key,action); else schedule=()->group.removeAction(action);
-            sequence = new NonLinearSequentialAction(
-                    new SleepUntilTrue(condition),
-                    new InstantAction(schedule),
-                    new InstantAction(this::removeFromGroup)
-            );
-        }
-    }
     public static class WriteToTelemetry extends ContinuousAction { //This action runs each actuator's control functions and updates the telemetry using the updateTelemetry function it is provided
         public WriteToTelemetry(Procedure updateTelemetry) {
             super(updateTelemetry);
