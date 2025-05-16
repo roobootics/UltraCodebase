@@ -18,8 +18,8 @@ public abstract class GenericPositionFinder extends LinearOpMode { //Used to fin
         this.run();
     }
     public void updateTelemetry(){
-        telemetry.addLine(actuatorNames.get(selectedActuatorIndex));
-        telemetry.addData("position", Objects.requireNonNull(actuators.get(actuatorNames.get(selectedActuatorIndex))).getCurrentPosition());
+        Components.telemetryAddLine(actuatorNames.get(selectedActuatorIndex));
+        Components.telemetryAddData("position", Objects.requireNonNull(actuators.get(actuatorNames.get(selectedActuatorIndex))).getCurrentPosition());
     }
     public void shiftSelectionRight(){
         if (selectedActuatorIndex<actuatorNames.size()-1){

@@ -44,9 +44,13 @@ public abstract class Components {
         telemetry.addData(caption,data);
         telemetryOutput.put(caption, data);
     }
+    public static void telemetryAddLine(String line){
+        telemetry.addLine(line);
+        telemetryOutput.put(line,null);
+    }
     public static void updateTelemetry(){
         telemetry.update();
-        telemetryOutput.clear();;
+        telemetryOutput.clear();
     }
     public static ElapsedTime timer = new ElapsedTime(); //Central timer used by everything (e.g. sleep action, motion profile)
     public static HashMap<String,Actuator<?>> actuators = new HashMap<>(); //Map of all actuators, each accessible through its name
