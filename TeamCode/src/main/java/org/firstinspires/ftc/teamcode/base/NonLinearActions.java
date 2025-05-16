@@ -1022,6 +1022,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
     public static class ParallelActionExecutor implements UnmappedActionGroup{
         public ArrayList<NonLinearAction> commandGroups;
+        public HashMap<String,Object> prevTelemetryOutput = new HashMap<>();
         public ParallelActionExecutor(NonLinearAction...commandGroups){
             this.commandGroups=new ArrayList<>(Arrays.asList(commandGroups));
             registerActions(commandGroups);
@@ -1041,7 +1042,10 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 actuator.resetCurrentPositions();
                 actuator.newTarget = false;
             }
-            telemetry.update();
+            if (!prevTelemetryOutput.equals(Components.telemetryOutput)){
+                prevTelemetryOutput=Components.telemetryOutput;
+                Components.updateTelemetry();
+            }
         }
         public void runLoop(Condition condition){
             while (condition.call()){

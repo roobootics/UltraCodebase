@@ -39,6 +39,15 @@ import org.firstinspires.ftc.teamcode.base.presets.TimeBasedLocalizers;
 public abstract class Components {
     public static HardwareMap hardwareMap;
     public static Telemetry telemetry;
+    public static HashMap<String,Object> telemetryOutput=new HashMap<>();
+    public static void telemetryAddData(String caption, Object data){
+        telemetry.addData(caption,data);
+        telemetryOutput.put(caption, data);
+    }
+    public static void updateTelemetry(){
+        telemetry.update();
+        telemetryOutput.clear();;
+    }
     public static ElapsedTime timer = new ElapsedTime(); //Central timer used by everything (e.g. sleep action, motion profile)
     public static HashMap<String,Actuator<?>> actuators = new HashMap<>(); //Map of all actuators, each accessible through its name
     @Target(ElementType.METHOD)
