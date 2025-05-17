@@ -13,25 +13,23 @@ public abstract class TimeBasedLocalizers{
         public double ABS_SERVO_SPEED;
         public double prevPosition;
         public double prevTime;
-        public double prevTarget;
-        public Components.BotServo actuator;
-        public ServoTimeBasedLocalizer(double servoSpeed,Components.BotServo actuator){
+        public double targetPos;
+        public ServoTimeBasedLocalizer(double servoSpeed){
             this.ABS_SERVO_SPEED=servoSpeed;
-            this.actuator=actuator;
         }
-        public double getCurrentPosition(Servo servo){
+        public double getCurrentPosition(Servo servo) {
             if (!Double.isNaN(servo.getPosition())){
-                double servoSpeed = Math.signum(prevTarget-prevPosition)*ABS_SERVO_SPEED;
+                targetPos =servo.getPosition();
+                double servoSpeed = Math.signum(targetPos - prevPosition)*ABS_SERVO_SPEED;
                 double time=timer.time();
-                double change = actuator.positionConversionInverse.apply(servoSpeed)*(time-prevTime);
-                if (Math.signum(change)==1){
-                    prevPosition=Math.min(prevTarget,prevPosition+change);
+                double change = servoSpeed*(time-prevTime);
+                if (Math.signum(change)==1.0){
+                    prevPosition=Math.min(targetPos,prevPosition+change);
                 }
-                else if (Math.signum(change)==-1){
-                    prevPosition=Math.max(prevTarget,prevPosition+change);
+                else if (Math.signum(change)==-1.0){
+                    prevPosition=Math.max(targetPos,prevPosition+change);
                 }
                 prevTime=time;
-                prevTarget=actuator.positionConversionInverse.apply(actuator.getPosition());
             }
             return prevPosition;
         }

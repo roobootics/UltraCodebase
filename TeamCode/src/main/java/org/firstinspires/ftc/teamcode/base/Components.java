@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
@@ -39,13 +40,11 @@ import org.firstinspires.ftc.teamcode.base.presets.TimeBasedLocalizers;
 public abstract class Components {
     public static HardwareMap hardwareMap;
     public static Telemetry telemetry;
-    public static HashMap<String,Object> telemetryOutput=new HashMap<>();
+    public static LinkedHashMap<String,Object> telemetryOutput=new LinkedHashMap<>();
     public static void telemetryAddData(String caption, Object data){
-        telemetry.addData(caption,data);
         telemetryOutput.put(caption, data);
     }
     public static void telemetryAddLine(String line){
-        telemetry.addLine(line);
         telemetryOutput.put(line,null);
     }
     public static void updateTelemetry(){
@@ -570,10 +569,7 @@ public abstract class Components {
             target=initialTarget;
         }
         public BotServo(String name, String[] names, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, double servoSpeed, double defaultTimeout, String[] keyPositionKeys, double[] keyPositionValues, Servo.Direction[] directions, double range, double initialTarget) {
-            this(name,names,(Servo e)->(0.0),maxTargetFunc,minTargetFunc,0.01,defaultTimeout,keyPositionKeys,keyPositionValues,directions,range, initialTarget, new String[]{"setPos"}, new ArrayList<>(Collections.singleton(new ServoControl())));
-            for (String partName: partNames){
-                this.getCurrentPositions.put(partName,()->(positionConversion.apply(new TimeBasedLocalizers.ServoTimeBasedLocalizer(servoSpeed,this).getCurrentPosition(Objects.requireNonNull(parts.get(partName)))))); //The getCurrentPosition function is copied, one for each of the actuator's parts. Position conversion is also applied
-            }
+            this(name,names,new TimeBasedLocalizers.ServoTimeBasedLocalizer(servoSpeed/270)::getCurrentPosition,maxTargetFunc,minTargetFunc,1.5,defaultTimeout,keyPositionKeys,keyPositionValues,directions,range, initialTarget, new String[]{"setPos"}, new ArrayList<>(Collections.singleton(new ServoControl())));
         }
         @Actuate
         public void setPosition(double position){
@@ -582,7 +578,9 @@ public abstract class Components {
                 currCommandedPos=position;
                 for (Servo part:parts.values()){part.setPosition(positionConversionInverse.apply(position));}
                 if (timeBasedLocalization){
-                    getCurrentPosition();
+                    for (ReturningFunc<Double> func:getCurrentPositions.values()){
+                        func.call();
+                    }
                 }
             }
         }

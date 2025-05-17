@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.base;
 
 import static org.firstinspires.ftc.teamcode.base.Components.actuators;
 import static org.firstinspires.ftc.teamcode.base.Components.telemetry;
+import static org.firstinspires.ftc.teamcode.base.Components.telemetryOutput;
 import static org.firstinspires.ftc.teamcode.base.Components.timer;
 
 import static org.firstinspires.ftc.teamcode.base.Components.BotMotor;
@@ -1022,7 +1023,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
     public static class ParallelActionExecutor implements UnmappedActionGroup{
         public ArrayList<NonLinearAction> commandGroups;
-        public HashMap<String,Object> prevTelemetryOutput = new HashMap<>();
+        public LinkedHashMap<String,Object> prevTelemetryOutput = new LinkedHashMap<>();
         public ParallelActionExecutor(NonLinearAction...commandGroups){
             this.commandGroups=new ArrayList<>(Arrays.asList(commandGroups));
             registerActions(commandGroups);
@@ -1042,8 +1043,16 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 actuator.resetCurrentPositions();
                 actuator.newTarget = false;
             }
-            if (!prevTelemetryOutput.equals(Components.telemetryOutput)){
-                prevTelemetryOutput=Components.telemetryOutput;
+            if (!prevTelemetryOutput.equals(telemetryOutput)){
+                prevTelemetryOutput=new LinkedHashMap<>(telemetryOutput);
+                for (String caption: telemetryOutput.keySet()){
+                    if (Objects.isNull(telemetryOutput.get(caption))){
+                       telemetry.addLine(caption);
+                    }
+                    else{
+                        telemetry.addData(caption,telemetryOutput.get(caption));
+                    }
+                }
                 Components.updateTelemetry();
             }
         }
