@@ -645,8 +645,13 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 actions.put(
                         () -> {
                             if (conditionalPairs[finalI].condition.call()) {
-                                isPressed.set(finalI,true);
-                                return !isPressed.get(finalI);
+                                if (!isPressed.get(finalI)){
+                                    isPressed.set(finalI,true);
+                                    return true;
+                                }
+                                else{
+                                    return false;
+                                }
                             } else {
                                 isPressed.set(finalI,false);
                                 return false;

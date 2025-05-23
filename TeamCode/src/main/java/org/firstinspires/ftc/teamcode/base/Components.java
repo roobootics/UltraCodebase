@@ -90,6 +90,9 @@ public abstract class Components {
         public ReturningFunc<Double> maxTargetFunc;
         public ReturningFunc<Double> minTargetFunc;
         //Max and min targets. They are dynamic functions since the max position for an actuator may not be the same. An in-game extension limit may not apply based on the direction of the actuator, for example.
+        public ReturningFunc<Double> maxOffsetFunc = ()->(Double.POSITIVE_INFINITY);
+        public ReturningFunc<Double> minOffsetFunc = ()->(Double.NEGATIVE_INFINITY);
+        //Max and min offsets. They are dynamic functions since the max position for an actuator may not be the same. An in-game extension limit may not apply based on the direction of the actuator, for example.
         public double errorTol; //Error tolerance for when the actuator is commanded to a position
         public double defaultTimeout; //Default time waited when an actuator is commanded to a position before ending the action.
         public boolean actuationStateUnlocked = true; //If set to false, methods tagged with @Actuate should not have an effect; it locks the actuator in whatever power/position state it's in.
@@ -120,7 +123,12 @@ public abstract class Components {
                 }
                 controlFuncsMap.put("controlOff",new ArrayList<>()); //Add a control mode without any control functions.
                 currControlFuncKey="controlOff";
-                defaultControlKey=controlFuncKeys[0];
+                if (controlFuncKeys.length>0){
+                    defaultControlKey=controlFuncKeys[0];
+                }
+                else{
+                    defaultControlKey="controlOff";
+                }
             }
         }
         public Actuator(String actuatorName, Class<E> type,
@@ -156,6 +164,9 @@ public abstract class Components {
                 }
             }
         }
+        public double getTargetMinusOffset(){
+            return target-offset;
+        }
         public double getTarget(){
             return target;
         }
@@ -177,8 +188,12 @@ public abstract class Components {
             return avg/getCurrentPositions.values().size();
         }
         public void setOffset(double offset){
-            this.offset=offset;
-            setTarget(target);
+            offset=Math.max(minOffsetFunc.call(),Math.min(maxOffsetFunc.call(),offset));
+            if (offset!=this.offset){
+                double oldOffset=this.offset;
+                this.offset=offset;
+                setTarget(target-oldOffset);
+            }
         }
         public void runControl(){
             for (ControlFunction<? extends Actuator<E>> func : Objects.requireNonNull(this.funcRegister.controlFuncsMap.get(currControlFuncKey))) {
@@ -271,29 +286,29 @@ public abstract class Components {
         }
         public SetTargetAction toggleAction(double target1, double target2){
             return setTargetAction(()->{
-                if (this.target==target1) return target2; else if (this.target==target2) return target1; else return this.target;
+                if (getTargetMinusOffset()==target1) return target2; else if (getTargetMinusOffset()==target2) return target1; else return getTargetMinusOffset();
             });
         }
         public SetTargetAction upwardFSMAction(double...targets){
             Arrays.sort(targets);
             return setTargetAction(()->{
                 for (double target: targets){
-                    if (this.target<target){
+                    if (getTargetMinusOffset()<target){
                         return target;
                     }
                 }
-                return this.target;
+                return getTargetMinusOffset();
             });
         }
         public SetTargetAction downwardFSMAction(double...targets){
             Arrays.sort(targets);
             return setTargetAction(()->{
                 for (int i = targets.length-1; i>=0; i--){
-                    if (this.target>targets[i]){
+                    if (getTargetMinusOffset()>targets[i]){
                         return targets[i];
                     }
                 }
-                return this.target;
+                return getTargetMinusOffset();
             });
         }
         public SetOffsetAction setOffsetAction(double offset){
@@ -318,7 +333,7 @@ public abstract class Components {
             return new PressTrigger(new IfThen(condition, toggleAction(target1,target2)));
         }
         public ConditionalAction triggeredDynamicAction(Condition upCondition, Condition downCondition, double change){
-            return new ConditionalAction(new IfThen(upCondition, setTargetAction(()->(target+change))),new IfThen(downCondition, setTargetAction(()->(target-change))));
+            return new ConditionalAction(new IfThen(upCondition, setTargetAction(()->(getTargetMinusOffset()+change))),new IfThen(downCondition, setTargetAction(()->(getTargetMinusOffset()-change))));
         }
         public PressTrigger triggeredFSMAction(Condition upCondition, Condition downCondition, double...targets){
             return new PressTrigger(new IfThen(upCondition, upwardFSMAction(targets)),new IfThen(downCondition, downwardFSMAction(targets)));
@@ -326,8 +341,8 @@ public abstract class Components {
         public PressTrigger triggeredSetOffsetAction(Condition condition, double offset){
             return new PressTrigger(new IfThen(condition, new SetOffsetAction(offset)));
         }
-        public PressTrigger triggeredDynamicOffsetAction(Condition upCondition, Condition downCondition, double offsetChange){
-            return new PressTrigger(new IfThen(upCondition, setOffsetAction(()->(offset+offsetChange))),new IfThen(downCondition, setOffsetAction(()->(target-offsetChange))));
+        public ConditionalAction triggeredDynamicOffsetAction(Condition upCondition, Condition downCondition, double offsetChange){
+            return new ConditionalAction(new IfThen(upCondition, setOffsetAction(()->(offset+offsetChange))),new IfThen(downCondition, setOffsetAction(()->(offset-offsetChange))));
         }
         public InstantAction switchControlAction(String controlKey){
             return new InstantAction(()->this.switchControl(controlKey));

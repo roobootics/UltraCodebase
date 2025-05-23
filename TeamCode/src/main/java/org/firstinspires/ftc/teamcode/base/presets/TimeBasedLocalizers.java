@@ -6,8 +6,6 @@ import static org.firstinspires.ftc.teamcode.base.Components.timer;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 
-import org.firstinspires.ftc.teamcode.base.Components;
-
 public abstract class TimeBasedLocalizers{
     public static class ServoTimeBasedLocalizer{ //Calculates position of a servo based on time
         public double ABS_SERVO_SPEED;

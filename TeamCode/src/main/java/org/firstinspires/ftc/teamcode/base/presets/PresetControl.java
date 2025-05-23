@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.base.presets;
 
+import static org.firstinspires.ftc.teamcode.base.Components.telemetryAddData;
 import static org.firstinspires.ftc.teamcode.base.Components.timer;
 
 import org.firstinspires.ftc.teamcode.base.Components;
@@ -35,8 +36,8 @@ public abstract class PresetControl { //Holds control functions that actuators c
                 this.feedForwardFunc = ()->(0.0);
             }
         }
-        public double[] integralSums;
-        public double[] previousErrors;
+        public double[] integralSums = new double[]{};
+        public double[] previousErrors = new double[]{};
         public double prevLoopTime;
         public double integralIntervalTime;
         public ArrayList<PIDFConstants> constants;
@@ -68,8 +69,8 @@ public abstract class PresetControl { //Holds control functions that actuators c
                     integralIntervalTime=timer.time();
                 }
                 parentActuator.setPower(
-                        constants.get(i).kP * parentActuator.instantTarget-currentPosition +
-                                constants.get(i).kI * integralSums[i] * timer.time()-prevLoopTime +
+                        constants.get(i).kP * (parentActuator.instantTarget-currentPosition) +
+                                constants.get(i).kI * integralSums[i] * (timer.time()-prevLoopTime) +
                                 constants.get(i).kD * ((parentActuator.instantTarget-currentPosition)-previousErrors[i])/(timer.time()-prevLoopTime) +
                                 constants.get(i).kF * constants.get(i).feedForwardFunc.call(),
                         parentActuator.partNames[i]

@@ -7,7 +7,6 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import org.firstinspires.ftc.teamcode.base.Components;
 
 import org.firstinspires.ftc.teamcode.base.NonLinearActions;
-import static org.firstinspires.ftc.teamcode.base.programs.RunConfigs.TestServo.testServo;
 
 import java.util.ArrayList;
 import java.util.Objects;
@@ -21,8 +20,6 @@ public abstract class GenericPositionFinder extends LinearOpMode { //Used to fin
     public void updateTelemetry(){
         Components.telemetryAddLine(actuatorNames.get(selectedActuatorIndex));
         Components.telemetryAddData("position", Objects.requireNonNull(actuators.get(actuatorNames.get(selectedActuatorIndex))).getCurrentPosition());
-        Components.telemetryAddData("target",testServo.getPosition());
-        Components.telemetryAddData("e",testServo.parts.get("test").getPosition());
     }
     public void shiftSelectionRight(){
         if (selectedActuatorIndex<actuatorNames.size()-1){
