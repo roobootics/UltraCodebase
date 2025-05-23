@@ -52,6 +52,8 @@ public abstract class PresetControl { //Holds control functions that actuators c
                     constants.add(constants.get(constants.size()-1));
                 }
             }
+            integralSums=new double[parentActuator.partNames.length];
+            previousErrors=new double[parentActuator.partNames.length];
         }
         @Override
         protected void runProcedure() {
