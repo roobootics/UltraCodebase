@@ -10,6 +10,7 @@ import org.firstinspires.ftc.teamcode.base.Components.PartsConfig;
 import org.firstinspires.ftc.teamcode.base.Components.BotServo;
 import org.firstinspires.ftc.teamcode.base.presets.PresetControl;
 
+import java.util.Arrays;
 import java.util.List;
 
 public abstract class RunConfigs {
@@ -26,14 +27,14 @@ public abstract class RunConfigs {
                     180,
                     0
             );
-            testServo.maxOffsetFunc=()->(180.0);
-            testServo.minOffsetFunc=()->(0.0);
+            testServo.setOffsetBoundFuncs(()->(180.0),()->(0.0));
             testMotor=new Components.BotMotor(
                     "motor", new String[]{"intake"},
-                    ()->(Double.POSITIVE_INFINITY),()->(Double.NEGATIVE_INFINITY),
+                    ()->(1500.0),()->(0.0),
                     20,3,new String[]{},new double[]{},
                     new DcMotor.Direction[]{DcMotor.Direction.FORWARD},
-                    new String[]{"PID"},
+                    new String[]{"MotionProfile","PID"},
+                    Arrays.asList(new PresetControl.TrapezoidalMotionProfile<>(10000,5000),new PresetControl.PIDF<>(new PresetControl.PIDF.PIDFConstants(0.015, 0, 0))),
                     List.of(new PresetControl.PIDF<>(new PresetControl.PIDF.PIDFConstants(0.015, 0, 0)))
             );
         }

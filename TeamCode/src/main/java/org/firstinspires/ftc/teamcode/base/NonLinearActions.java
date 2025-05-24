@@ -1,11 +1,11 @@
 package org.firstinspires.ftc.teamcode.base;
 
 import static org.firstinspires.ftc.teamcode.base.Components.actuators;
-import static org.firstinspires.ftc.teamcode.base.Components.telemetry;
-import static org.firstinspires.ftc.teamcode.base.Components.telemetryOutput;
+import static org.firstinspires.ftc.teamcode.base.Components.telemetryAddData;
 import static org.firstinspires.ftc.teamcode.base.Components.timer;
 
 import static org.firstinspires.ftc.teamcode.base.Components.BotMotor;
+import static org.firstinspires.ftc.teamcode.base.Components.updateTelemetry;
 
 import com.qualcomm.robotcore.hardware.IMU;
 
@@ -218,10 +218,10 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         public WriteToTelemetry() {
             super(() -> {
                 for (Components.Actuator<?> actuator : actuators.values()) {
-                    telemetry.addData(actuator.name + " target", actuator.target);
-                    telemetry.addData(actuator.name + " instant target", actuator.instantTarget);
-                    telemetry.addData(actuator.name + " current position", actuator.getCurrentPosition());
-                    telemetry.addData("", "");
+                    telemetryAddData(actuator.getName() + " target", actuator.getTarget());
+                    telemetryAddData(actuator.getName() + " instant target", actuator.getInstantTarget());
+                    telemetryAddData(actuator.getName() + " current position", actuator.getCurrentPosition());
+                    telemetryAddData("", "");
                 }
             });
         }
@@ -233,8 +233,8 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         boolean runProcedure() {
             if (actuatorsCommanded.size()<actuators.size()) {
                 for (String key : actuators.keySet()) {
-                    if (Objects.requireNonNull(actuators.get(key)).newTarget && !actuatorsCommanded.containsKey(key)) {
-                        Objects.requireNonNull(actuators.get(key)).switchControl(Objects.requireNonNull(actuators.get(key)).defaultControlKey);
+                    if (Objects.requireNonNull(actuators.get(key)).isNewTarget() && !actuatorsCommanded.containsKey(key)) {
+                        Objects.requireNonNull(actuators.get(key)).switchControl(Objects.requireNonNull(actuators.get(key)).getDefaultControlKey());
                         actuatorsCommanded.put(key, true);
                     }
                 }
@@ -986,8 +986,8 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
     public static PressTrigger triggeredToggleAction(Condition condition, NonLinearAction action1, NonLinearAction action2){
         AtomicBoolean state = new AtomicBoolean(true);
-        action1 = new NonLinearSequentialAction(action1,new InstantAction(()->state.set(!state.get())));
-        action2 = new NonLinearSequentialAction(action2,new InstantAction(()->state.set(!state.get())));
+        action1 = new NonLinearSequentialAction(new InstantAction(()->state.set(!state.get())), action1);
+        action2 = new NonLinearSequentialAction(new InstantAction(()->state.set(!state.get())), action2);
         return new PressTrigger(
                 new IfThen(condition,
                         new SemiPersistentConditionalAction(
@@ -998,13 +998,13 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         );
     }
     public static PressTrigger triggeredFSMAction(Condition upCondition, Condition downCondition, NonLinearAction...actions){
-        AtomicInteger state = new AtomicInteger(0);
+        AtomicInteger state = new AtomicInteger(-1);
         IfThen[] upIfThens = new IfThen[actions.length];
         for (int i=0;i<upIfThens.length;i++){
             int finalI = i;
             upIfThens[i]=new IfThen(
                     ()->(state.get()==finalI),
-                    new NonLinearSequentialAction(actions[i],new InstantAction(()->{if (state.get()<actions.length){state.set(state.get()+1);}}))
+                    actions[i]
             );
         }
         IfThen[] downIfThens = new IfThen[actions.length];
@@ -1012,18 +1012,24 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             int finalI = i;
             downIfThens[i]=new IfThen(
                     ()->(state.get()==finalI),
-                    new NonLinearSequentialAction(actions[i],new InstantAction(()->{if (state.get()>0){state.set(state.get()-1);}}))
+                    actions[i]
             );
         }
         return new PressTrigger(
                 new IfThen(upCondition,
-                        new SemiPersistentConditionalAction(
-                                upIfThens
+                        new NonLinearSequentialAction(
+                                new InstantAction(()->{if (state.get()<actions.length-1){state.set(state.get()+1);}}),
+                                new SemiPersistentConditionalAction(
+                                        upIfThens
+                                )
                         )
                 ),
                 new IfThen(downCondition,
-                    new SemiPersistentConditionalAction(
-                            downIfThens
+                    new NonLinearSequentialAction(
+                            new InstantAction(()->{if (state.get()>0){state.set(state.get()-1);}}),
+                            new SemiPersistentConditionalAction(
+                                    downIfThens
+                            )
                     )
                 )
         );
@@ -1035,12 +1041,12 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             int finalI = i;
             ifThens[i]=new IfThen(
                     ()->(state.get()==finalI),
-                    new NonLinearSequentialAction(actions[finalI], new InstantAction(()->{
+                    new NonLinearSequentialAction(new InstantAction(()->{
                         if (state.get()==actions.length-1){
                             state.set(0);
                         }
                         else{state.set(state.get()+1);}
-                    }))
+                    }), actions[finalI])
             );
         }
         return new PressTrigger(
@@ -1083,7 +1089,6 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
     public static class ParallelActionExecutor implements UnmappedActionGroup{
         public ArrayList<NonLinearAction> commandGroups;
-        public LinkedHashMap<String,Object> prevTelemetryOutput = new LinkedHashMap<>();
         public ParallelActionExecutor(NonLinearAction...commandGroups){
             this.commandGroups=new ArrayList<>(Arrays.asList(commandGroups));
             registerActions(commandGroups);
@@ -1092,8 +1097,8 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             conductActionModifications();
             this.commandGroups=commandGroups.stream().filter(NonLinearAction::run).collect(Collectors.toCollection(ArrayList::new));
             for (Components.Actuator<?> actuator : actuators.values()) {
-                if (actuator.dynamicTargetBoundaries) { //If the actuator's target boundaries can change, this will ensure that the actuator's target never falls outside of the boundaries
-                    actuator.setTarget(actuator.target);
+                if (actuator.getDynamicTargetBoundaries()) { //If the actuator's target boundaries can change, this will ensure that the actuator's target never falls outside of the boundaries
+                    actuator.setTarget(actuator.getTargetMinusOffset());
                 }
                 if (actuator instanceof Components.CRActuator && ((Components.CRActuator<?>) actuator).dynamicPowerBoundaries) { //If the CRActuator's power boundaries can change, this will ensure that the CRActuator's power never falls outside of the boundaries
                     Components.CRActuator<?> castedActuator = ((Components.CRActuator<?>) actuator);
@@ -1101,20 +1106,9 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 }
                 actuator.runControl();
                 actuator.resetCurrentPositions();
-                actuator.newTarget = false;
+                actuator.resetNewTarget();
             }
-            if (!prevTelemetryOutput.equals(telemetryOutput)){
-                prevTelemetryOutput=new LinkedHashMap<>(telemetryOutput);
-                for (String caption: telemetryOutput.keySet()){
-                    if (Objects.isNull(telemetryOutput.get(caption))){
-                       telemetry.addLine(caption);
-                    }
-                    else{
-                        telemetry.addData(caption,telemetryOutput.get(caption));
-                    }
-                }
-                Components.updateTelemetry();
-            }
+            updateTelemetry();
         }
         public void runLoop(Condition condition){
             while (condition.call()){

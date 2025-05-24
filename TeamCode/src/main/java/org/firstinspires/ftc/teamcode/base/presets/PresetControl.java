@@ -1,6 +1,5 @@
 package org.firstinspires.ftc.teamcode.base.presets;
 
-import static org.firstinspires.ftc.teamcode.base.Components.telemetryAddData;
 import static org.firstinspires.ftc.teamcode.base.Components.timer;
 
 import org.firstinspires.ftc.teamcode.base.Components;
@@ -57,11 +56,11 @@ public abstract class PresetControl { //Holds control functions that actuators c
         }
         @Override
         protected void runProcedure() {
-            if (isStart){
+            if (isStart()){
                 prevLoopTime=timer.time();
                 integralIntervalTime=timer.time();
             }
-            if (isStart||parentActuator.newTarget){
+            if (isStart()||parentActuator.isNewTarget()){
                 Arrays.setAll(integralSums,(int i)->(0.0));
             }
             for (int i=0;i<parentActuator.partNames.length;i++){
@@ -71,13 +70,13 @@ public abstract class PresetControl { //Holds control functions that actuators c
                     integralIntervalTime=timer.time();
                 }
                 parentActuator.setPower(
-                        constants.get(i).kP * (parentActuator.instantTarget-currentPosition) +
+                        constants.get(i).kP * (parentActuator.getInstantTarget()-currentPosition) +
                                 constants.get(i).kI * integralSums[i] * (timer.time()-prevLoopTime) +
-                                constants.get(i).kD * ((parentActuator.instantTarget-currentPosition)-previousErrors[i])/(timer.time()-prevLoopTime) +
+                                constants.get(i).kD * ((parentActuator.getInstantTarget()-currentPosition)-previousErrors[i])/(timer.time()-prevLoopTime) +
                                 constants.get(i).kF * constants.get(i).feedForwardFunc.call(),
                         parentActuator.partNames[i]
                 );
-                previousErrors[i]=parentActuator.instantTarget-currentPosition;
+                previousErrors[i]=parentActuator.getInstantTarget()-currentPosition;
             }
             prevLoopTime=timer.time();
         }
@@ -104,6 +103,8 @@ public abstract class PresetControl { //Holds control functions that actuators c
         public double profileStartTime;
         public double profileStartPos;
         double startVelocity;
+        boolean forceStartVelocityZero=false;
+        public String phase="IDLE";
         public TrapezoidalMotionProfile(double maxVelocity, double acceleration){
             this.MAX_VELOCITY=maxVelocity;
             this.ACCELERATION=acceleration;
@@ -115,7 +116,13 @@ public abstract class PresetControl { //Holds control functions that actuators c
         }
         @Override
         protected void runProcedure() {
-            if (parentActuator.newTarget||newParams||isStart){
+            if (parentActuator.isNewTarget()||newParams||isStart()){
+                if (parentActuator.isNewTarget()){
+                    parentActuator.setInstantTarget(parentActuator.getCurrentPosition());
+                }
+                if (isStart()){
+                    forceStartVelocityZero=true;
+                }
                 newParams=false;
                 resetting=true;
                 profileStartTime=timer.time();
@@ -125,20 +132,26 @@ public abstract class PresetControl { //Holds control functions that actuators c
             else if (resetting){
                 resetting=false;
                 createMotionProfile();
-                parentActuator.instantTarget=runMotionProfileOnce();
+                parentActuator.setInstantTarget(runMotionProfileOnce());
             }
             else{
-                parentActuator.instantTarget=runMotionProfileOnce();
+                parentActuator.setInstantTarget(runMotionProfileOnce());
             }
         }
         public void createMotionProfile(){
             profileStartPos=parentActuator.getCurrentPosition();
             double distance = parentActuator.getTarget() - profileStartPos;
             if (distance!=0) {
-                if (parentActuator instanceof Components.BotMotor) {
-                    startVelocity = ((Components.BotMotor) parentActuator).getVelocity();
-                } else {
-                    startVelocity = (profileStartPos - firstResetPosition) / (timer.time() - profileStartTime);
+                if (!forceStartVelocityZero){
+                    if (parentActuator instanceof Components.BotMotor) {
+                        startVelocity = ((Components.BotMotor) parentActuator).getVelocity();
+                    } else {
+                        startVelocity = (profileStartPos - firstResetPosition) / (timer.time() - profileStartTime);
+                    }
+                }
+                else{
+                    startVelocity=0;
+                    forceStartVelocityZero=false;
                 }
                 //If the actuator is a motor, we can use getVelocity to find the velocity at the start of the profile. Otherwise we calculate it manually
                 currentMaxVelocity = MAX_VELOCITY * Math.signum(distance);
@@ -186,20 +199,27 @@ public abstract class PresetControl { //Holds control functions that actuators c
         public double runMotionProfileOnce(){
             double elapsedTime = timer.time()-profileStartTime;
             if (elapsedTime < accelDT){
+                phase="ACCEL";
                 return profileStartPos + startVelocity * elapsedTime + 0.5 * currentAcceleration * elapsedTime*elapsedTime;
             }
             else if (elapsedTime < accelDT+cruiseDT){
+                phase="CRUISE";
                 double cruiseCurrentDT = elapsedTime - accelDT;
                 return profileStartPos + accelDistance + currentMaxVelocity * cruiseCurrentDT;
             }
-
             else if (elapsedTime < accelDT+cruiseDT+decelDT){
+                phase="DECEL";
                 double decelCurrentDT = elapsedTime - accelDT - cruiseDT;
                 return profileStartPos + accelDistance + cruiseDistance + currentMaxVelocity * decelCurrentDT + 0.5 * currentDeceleration * decelCurrentDT*decelCurrentDT;
             }
             else{
+                phase="IDLE";
                 return parentActuator.getTarget();
             }
+        }
+        @Override
+        public void stopProcedure() {
+            phase="OFF";
         }
     }
 
@@ -207,7 +227,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
     public static class ServoControl extends ControlFunction<BotServo>{ //Control function to get servos to their targets
         @Override
         protected void runProcedure() {
-            parentActuator.setPosition(parentActuator.instantTarget);
+            parentActuator.setPosition(parentActuator.getInstantTarget());
         }
     }
     public static class CRBangBangControl<E extends CRActuator<?>> extends ControlFunction<E>{ //Likely will be used to get CRServos to their targets if they have no encoders with them
@@ -221,8 +241,8 @@ public abstract class PresetControl { //Holds control functions that actuators c
         @Override
         protected void runProcedure() {
             double currentPosition = parentActuator.getCurrentPosition();
-            if (Math.abs(parentActuator.instantTarget-currentPosition)>parentActuator.errorTol){
-                parentActuator.setPower(powerFunc.call()*Math.signum(parentActuator.instantTarget-currentPosition));
+            if (Math.abs(parentActuator.getInstantTarget()-currentPosition)>parentActuator.getErrorTol()){
+                parentActuator.setPower(powerFunc.call()*Math.signum(parentActuator.getInstantTarget()-currentPosition));
             }
         }
     }

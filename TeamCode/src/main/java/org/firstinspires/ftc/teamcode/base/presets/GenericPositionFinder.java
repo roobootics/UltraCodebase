@@ -34,12 +34,13 @@ public abstract class GenericPositionFinder extends LinearOpMode { //Used to fin
     public void run(){
         for (String name:actuators.keySet()){
             if (!(actuators.get(name) instanceof Components.BotMotor)){
-                Objects.requireNonNull(actuators.get(name)).switchControl(Objects.requireNonNull(actuators.get(name)).defaultControlKey);
+                Objects.requireNonNull(actuators.get(name)).switchControl(Objects.requireNonNull(actuators.get(name)).getDefaultControlKey());
             }
             else{
                 Components.BotMotor motor = Objects.requireNonNull((Components.BotMotor) actuators.get(name));
                 motor.resetEncoders();
                 motor.setZeroPowerFloat();
+                motor.lockTargetState();
                 //Motors are disabled; to find their positions you move them manually and read the encoder
             }
             actuatorNames.add(name);

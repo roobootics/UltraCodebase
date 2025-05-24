@@ -5,7 +5,6 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import static org.firstinspires.ftc.teamcode.base.Components.telemetryAddData;
 import static org.firstinspires.ftc.teamcode.base.programs.RunConfigs.TestServo.testMotor;
-import static org.firstinspires.ftc.teamcode.base.programs.RunConfigs.TestServo.testServo;
 
 import org.firstinspires.ftc.teamcode.base.NonLinearActions;
 
@@ -18,13 +17,14 @@ public class tets extends LinearOpMode {
         waitForStart();
         NonLinearActions.ParallelActionExecutor executor = new NonLinearActions.ParallelActionExecutor(
                 new NonLinearActions.RunResettingLoop(
-                        testMotor.setTargetAction(500)
+                       testMotor.triggeredToggleAction(()->(gamepad1.a),0,1500)
                 ),
                 new NonLinearActions.PowerOnCommand(),
                 new NonLinearActions.WriteToTelemetry(
                     ()->{
-                        telemetryAddData("a",testMotor.instantTarget);
+                        telemetryAddData("a",testMotor.getInstantTarget());
                         telemetryAddData("e",testMotor.getCurrentPosition());
+                        telemetryAddData("vel",testMotor.getVelocity());
                     }
                 )
         );
