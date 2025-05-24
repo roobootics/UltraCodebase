@@ -241,7 +241,6 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
 
         }
     }
-
     public static class SleepUntilTrue extends NonLinearAction { //Sleeps until a condition is met or until an optional timeout time is reached
         public ReturningFunc<Boolean> condition;
         public double timeout;
@@ -394,6 +393,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
 
         @Override
         public void removeActionProcedure(Integer key) {
+            Objects.requireNonNull(actions.get(key)).stop();
             isStarts.remove((int) key);
             actions.remove((int) key);
             remainingActions.remove((int) key);
@@ -515,6 +515,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
         @Override
         public void removeActionProcedure(ReturningFunc<Boolean> condition) {
+            Objects.requireNonNull(actions.get(condition)).stop();
             if (currentAction==actions.get(condition)){
                 currentAction=null;
             }
@@ -560,6 +561,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
         @Override
         public void removeActionProcedure(ReturningFunc<Boolean> condition) {
+            Objects.requireNonNull(actions.get(condition)).stop();
             if (currentAction==actions.get(condition)){
                 currentAction=null;
             }
@@ -611,6 +613,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
         @Override
         public void removeActionProcedure(ReturningFunc<Boolean> condition) {
+            Objects.requireNonNull(actions.get(condition)).stop();
             if (currentAction==actions.get(condition)){
                 currentAction=null;
             }
@@ -649,11 +652,26 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
         @Override
         public void addAction(ReturningFunc<Boolean> condition, NonLinearAction action){
-            actions.put(condition,action);
             isPressed.add(false);
+            int index=isPressed.size()-1;
+            actions.put(() -> {
+                if (condition.call()) {
+                    if (!isPressed.get(index)){
+                        isPressed.set(index,true);
+                        return true;
+                    }
+                    else{
+                        return false;
+                    }
+                } else {
+                    isPressed.set(index,false);
+                    return false;
+                }
+            },action);
         }
         @Override
         public void removeAction(ReturningFunc<Boolean> condition){
+            Objects.requireNonNull(actions.get(condition)).stop();
             if (currentAction==actions.get(condition)){
                 currentAction=null;
             }
@@ -695,11 +713,26 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
         @Override
         public void addAction(ReturningFunc<Boolean> condition, NonLinearAction action){
-            actions.put(condition,action);
             isPressed.add(false);
+            int index=isPressed.size()-1;
+            actions.put(() -> {
+                if (condition.call()) {
+                    if (!isPressed.get(index)){
+                        isPressed.set(index,true);
+                        return true;
+                    }
+                    else{
+                        return false;
+                    }
+                } else {
+                    isPressed.set(index,false);
+                    return false;
+                }
+            },action);
         }
         @Override
         public void removeAction(ReturningFunc<Boolean> condition){
+            Objects.requireNonNull(actions.get(condition)).stop();
             if (currentAction==actions.get(condition)){
                 currentAction=null;
             }
