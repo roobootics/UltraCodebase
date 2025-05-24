@@ -121,7 +121,7 @@ public abstract class Components {
         private boolean timeBasedLocalization = false; //Indicates whether the getCurrentPosition method of the actuator calculates the position based on time as opposed to an encoder, which is important to know.
         private boolean dynamicTargetBoundaries = false; //Indicates whether the max and min targets can change for a specific actuator. Useful to know if they don't
         public class ControlFuncRegister<T extends Actuator<E>>{ //Registers control functions. Parametrized to the subclass of Actuator that is using it. The functions cannot be stored directly in the actuator because of generic type erasure and generic invariance. This approach is cleaner
-            public HashMap<String, List<ControlFunction<T>>> controlFuncsMap = new HashMap<>(); //Map with lists of control functions paired with names.
+            private final HashMap<String, List<ControlFunction<T>>> controlFuncsMap = new HashMap<>(); //Map with lists of control functions paired with names.
             @SafeVarargs
             public ControlFuncRegister(T instance, //The function to find the current position of the actuator accepts one of the actuator's parts
                                        String[] controlFuncKeys, List<ControlFunction<T>>... controlFuncs){
@@ -140,6 +140,9 @@ public abstract class Components {
                 else{
                     defaultControlKey="controlOff";
                 }
+            }
+            public List<ControlFunction<T>> getControlFunc(String key){
+                return controlFuncsMap.get(key);
             }
         }
         public Actuator(String actuatorName, Class<E> type,
@@ -283,7 +286,7 @@ public abstract class Components {
         }
         public class SetTargetAction extends CompoundAction { //Action to set the target, then wait until the position of the actuator is a certain distance from the target, or until a set timeout
             public SetTargetAction(ReturningFunc<Double> targetFunc, double timeout){
-                sequence = new NonLinearSequentialAction(
+                group = new NonLinearSequentialAction(
                         new InstantAction(()-> setTarget(targetFunc.call())),
                         new SleepUntilTrue(
                                 ()->(Math.abs(getCurrentPosition()-target)<errorTol),
@@ -307,7 +310,7 @@ public abstract class Components {
         }
         public class SetOffsetAction extends CompoundAction { //Action to set the offset
             public SetOffsetAction(ReturningFunc<Double> offsetFunc, double timeout){
-                sequence = new NonLinearSequentialAction(
+                group = new NonLinearSequentialAction(
                         new InstantAction(()-> setOffset(offsetFunc.call())),
                         new SleepUntilTrue(
                                 ()->(Math.abs(getCurrentPosition()-target)<errorTol),
@@ -419,9 +422,9 @@ public abstract class Components {
     }
     //Each of the subclasses of Actuator will have some generic constructors and some constructors where information is preset.
     public abstract static class CRActuator<E extends DcMotorSimple> extends Actuator<E>{ //Type of Actuator that works for continuous rotation parts, like DcMotorEx and CRServo
-        HashMap<String,Double> powers = new HashMap<>(); //Stores the powers each of the parts are set to. Synchronized parts can have different powers because the load on one may be larger than on the other
-        ReturningFunc<Double> maxPowerFunc;
-        ReturningFunc<Double> minPowerFunc;
+        private final HashMap<String,Double> powers = new HashMap<>(); //Stores the powers each of the parts are set to. Synchronized parts can have different powers because the load on one may be larger than on the other
+        private final ReturningFunc<Double> maxPowerFunc;
+        private final ReturningFunc<Double> minPowerFunc;
         //Max and min power boundaries
         public boolean dynamicPowerBoundaries=false; //Indicates if the power boundaries can change, which is useful to know
         public CRActuator(String name, Class<E> type, String[] names, Function<E, Double> getCurrentPosition, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, ReturningFunc<Double> maxPowerFunc, ReturningFunc<Double> minPowerFunc, double errorTol, double defaultTimeout, String[] keyPositionKeys, double[] keyPositionValues,
@@ -471,6 +474,9 @@ public abstract class Components {
                     }
                 }
             }
+        }
+        public double getPower(String name){
+            return Objects.requireNonNull(powers.get(name));
         }
         public class SetPowerAction extends InstantAction{ //Action to set the power of all synchronized parts
             public SetPowerAction(ReturningFunc<Double> powerFunc) {
@@ -534,7 +540,7 @@ public abstract class Components {
     }
     //Each of the bottom-level subclass constructors will accept getCurrentPosition functions and control functions, since those cater to a specific subclass.
     public static class BotMotor extends CRActuator<DcMotorEx>{
-        public boolean isStallResetting;
+        private boolean isStallResetting;
         @SafeVarargs
         public BotMotor(String name, String[] names, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, ReturningFunc<Double> maxPowerFunc, ReturningFunc<Double> minPowerFunc, double errorTol, double defaultTimeout, String[] keyPositionKeys, double[] keyPositionValues, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<BotMotor>>... controlFuncs) {
             super(name, DcMotorEx.class, names, (DcMotorEx motor)->((double) motor.getCurrentPosition()), maxTargetFunc, minTargetFunc, maxPowerFunc,minPowerFunc,errorTol, defaultTimeout, keyPositionKeys, keyPositionValues, directions);
@@ -594,6 +600,9 @@ public abstract class Components {
             }
             return maxCurrent;
         }
+        public boolean isStallResetting(){
+            return isStallResetting;
+        }
         public class StallResetAction extends NonLinearAction { //Stall resets encoders, and offsets the position if you want to reset at a non-zero position.
             double resetPosition;
             double stallVolts;
@@ -603,7 +612,7 @@ public abstract class Components {
             }
             @Override
             boolean runProcedure() {
-                if (isStart){
+                if (isStart()){
                     isStallResetting=true;
                     setPower(-0.2);
                 }

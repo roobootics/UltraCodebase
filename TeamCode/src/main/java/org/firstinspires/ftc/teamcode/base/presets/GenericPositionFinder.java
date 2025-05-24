@@ -10,13 +10,11 @@ import org.firstinspires.ftc.teamcode.base.NonLinearActions;
 
 import java.util.ArrayList;
 import java.util.Objects;
+//Dpad left/right to switch between actuators. If the actuator is a servo, use left/right bumper to move it and see the position.
 public abstract class GenericPositionFinder extends LinearOpMode { //Used to find the specific positions that we will end up setting actuators to. Allows one to select an actuator and move it.
-    public int selectedActuatorIndex = 0;
-    public ArrayList<String> actuatorNames = new ArrayList<>();
-    @Override
-    public void runOpMode(){
-        this.run();
-    }
+    //Subclass it to work with a specific PartsConfig. Call the init function of that PartsConfig before calling the runOpMode of this class.
+    private int selectedActuatorIndex = 0;
+    private final ArrayList<String> actuatorNames = new ArrayList<>();
     public void updateTelemetry(){
         Components.telemetryAddLine(actuatorNames.get(selectedActuatorIndex));
         Components.telemetryAddData("position", Objects.requireNonNull(actuators.get(actuatorNames.get(selectedActuatorIndex))).getCurrentPosition());
@@ -31,7 +29,8 @@ public abstract class GenericPositionFinder extends LinearOpMode { //Used to fin
             selectedActuatorIndex-=1;
         }
     }
-    public void run(){
+    @Override
+    public void runOpMode(){
         for (String name:actuators.keySet()){
             if (!(actuators.get(name) instanceof Components.BotMotor)){
                 Objects.requireNonNull(actuators.get(name)).switchControl(Objects.requireNonNull(actuators.get(name)).getDefaultControlKey());

@@ -11,6 +11,7 @@ import org.firstinspires.ftc.teamcode.base.LambdaInterfaces.ReturningFunc;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 
 public abstract class PresetControl { //Holds control functions that actuators can use. Note that more control functions, like other types of motion profiling, can be coded and used.
     public static class PIDF<E extends CRActuator<?>> extends ControlFunction<E>{
@@ -35,11 +36,11 @@ public abstract class PresetControl { //Holds control functions that actuators c
                 this.feedForwardFunc = ()->(0.0);
             }
         }
-        public double[] integralSums = new double[]{};
-        public double[] previousErrors = new double[]{};
-        public double prevLoopTime;
-        public double integralIntervalTime;
-        public ArrayList<PIDFConstants> constants;
+        private double[] integralSums = new double[]{};
+        private double[] previousErrors = new double[]{};
+        private double prevLoopTime;
+        private double integralIntervalTime;
+        private final ArrayList<PIDFConstants> constants;
         public PIDF(PIDFConstants...constants){ //The PIDF can accept multiple sets of coefficients, since if two synchronized CR components have different loads, they will need to produce different power outputs
             this.constants=new ArrayList<>(Arrays.asList(constants));
         }
@@ -86,25 +87,25 @@ public abstract class PresetControl { //Holds control functions that actuators c
         }
     }
     public static class TrapezoidalMotionProfile<E extends Actuator<?>> extends ControlFunction<E>{
-        boolean newParams=true;
-        boolean resetting=true;
-        double firstResetPosition;
-        public double currentMaxVelocity;
-        public double currentAcceleration;
-        public double currentDeceleration;
-        public double accelDT;
-        public double decelDT;
-        public double cruiseDT;
-        public double accelDistance;
-        public double decelDistance;
-        public double cruiseDistance;
-        public double MAX_VELOCITY;
-        public double ACCELERATION;
-        public double profileStartTime;
-        public double profileStartPos;
-        double startVelocity;
-        boolean forceStartVelocityZero=false;
-        public String phase="IDLE";
+        private boolean newParams=true;
+        private boolean resetting=true;
+        private double firstResetPosition;
+        private double currentMaxVelocity;
+        private double currentAcceleration;
+        private double currentDeceleration;
+        private double accelDT;
+        private double decelDT;
+        private double cruiseDT;
+        private double accelDistance;
+        private double decelDistance;
+        private double cruiseDistance;
+        private double MAX_VELOCITY;
+        private double ACCELERATION;
+        private double profileStartTime;
+        private double profileStartPos;
+        private double startVelocity;
+        private boolean forceStartVelocityZero=false;
+        private String phase="IDLE";
         public TrapezoidalMotionProfile(double maxVelocity, double acceleration){
             this.MAX_VELOCITY=maxVelocity;
             this.ACCELERATION=acceleration;
@@ -221,6 +222,21 @@ public abstract class PresetControl { //Holds control functions that actuators c
         public void stopProcedure() {
             phase="OFF";
         }
+        public HashMap<String,Double> getProfileData(){
+            HashMap<String,Double> data = new HashMap<>();
+            data.put("currentMaxVelocity",currentMaxVelocity);
+            data.put("accelDistance",accelDistance);
+            data.put("decelDistance",decelDistance);
+            data.put("cruiseDistance",cruiseDistance);
+            data.put("accelDT",accelDT);
+            data.put("cruiseDT",cruiseDT);
+            data.put("decelDT",decelDT);
+
+            return data;
+        }
+        public String getPhase(){
+            return phase;
+        }
     }
 
 
@@ -231,7 +247,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
         }
     }
     public static class CRBangBangControl<E extends CRActuator<?>> extends ControlFunction<E>{ //Likely will be used to get CRServos to their targets if they have no encoders with them
-        ReturningFunc<Double> powerFunc; //This control function moves the CRActuator to the target at a given power, which can change. That is stored here.
+        private final ReturningFunc<Double> powerFunc; //This control function moves the CRActuator to the target at a given power, which can change. That is stored here.
         public CRBangBangControl(double power){
             this.powerFunc=()->(power);
         }

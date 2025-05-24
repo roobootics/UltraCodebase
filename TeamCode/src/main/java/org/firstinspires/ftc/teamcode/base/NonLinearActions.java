@@ -26,9 +26,9 @@ import java.util.stream.Collectors;
 
 public abstract class NonLinearActions { //Command-based (or action-based) system
     public abstract static class NonLinearAction { //Base class for any action
-        public boolean isBusy = false; //Indicates whether the action is active or not
-        public boolean isStart = true; //Actions know if they've just started running or not
-        public Procedure removeFromGroup; //If the action is part of an action group (everything but the scheduler,) this allows it to remove itself from the group.
+        private boolean isBusy = false; //Indicates whether the action is active or not
+        private boolean isStart = true; //Actions know if they've just started running or not
+        private Procedure removeFromGroup; //If the action is part of an action group (everything but the scheduler,) this allows it to remove itself from the group.
 
         public void reset() {
             isStart = true;
@@ -65,6 +65,12 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 removeFromGroup.call();
             }
             removeFromGroup = null;
+        }
+        final public boolean isBusy(){
+            return isBusy;
+        }
+        final public boolean isStart(){
+            return isStart;
         }
     }
     public interface MappedActionGroup<K> { //NonLinearActions that run a group of other actions, and stores them with indexes or keys, should implement this. (SequentialActions, ConditionalActions)
@@ -140,14 +146,14 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     public abstract static class PersistentNonLinearAction extends NonLinearAction { //NonLinearAction but it can't be reset if not completed
         @Override
         public void reset() {
-            if (!isBusy) {
-                isStart = true;
+            if (!isBusy()) {
+                super.reset();
             }
         }
     }
 
     public static class InstantAction extends NonLinearAction { //Action that completes in one loop iteration
-        public Procedure procedure;
+        private final Procedure procedure;
 
         public InstantAction(Procedure procedure) {
             this.procedure = procedure;
@@ -161,7 +167,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
 
     public static class ContinuousAction extends NonLinearAction { //Action that constantly runs the same way each loop iteration
-        public Procedure procedure;
+        private final Procedure procedure;
 
         public ContinuousAction(Procedure procedure) {
             this.procedure = procedure;
@@ -175,7 +181,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
 
     public static class LambdaAction extends NonLinearAction { //This allows one to create a NonLinearAction without making it its own class
-        public ReturningFunc<Boolean> action;
+        private final ReturningFunc<Boolean> action;
 
         public LambdaAction(ReturningFunc<Boolean> action) {
             this.action = action;
@@ -188,18 +194,18 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
 
     public abstract static class CompoundAction extends NonLinearAction { //Allows one to represent a sequence of actions as one atomic action. The main difference between this and a sequential action is that you can code custom stop functionality.
-        public NonLinearAction sequence;
+        public NonLinearAction group; //A subclass will assign an action to this.
         @Override
         boolean runProcedure() {
-            if (isStart) {
-                sequence.reset();
+            if (isStart()) {
+                group.reset();
             }
-            return sequence.run();
+            return group.run();
         }
 
         @Override
         public void stopProcedure() {
-            sequence.stop();
+            group.stop();
         }
     }
 
@@ -208,7 +214,6 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         public WriteToTelemetry(Procedure updateTelemetry) {
             super(updateTelemetry);
         }
-
         public WriteToTelemetry() {
             super(() -> {
                 for (Components.Actuator<?> actuator : actuators.values()) {
@@ -222,7 +227,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
 
     public static class PowerOnCommand extends NonLinearAction { //This action automatically activates each actuator's default control functions when they are first commanded
-        public HashMap<String, Boolean> actuatorsCommanded = new HashMap<>();
+        private final HashMap<String, Boolean> actuatorsCommanded = new HashMap<>();
         @Override
         boolean runProcedure() {
             if (actuatorsCommanded.size()<actuators.size()) {
@@ -242,9 +247,9 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
     }
     public static class SleepUntilTrue extends NonLinearAction { //Sleeps until a condition is met or until an optional timeout time is reached
-        public ReturningFunc<Boolean> condition;
-        public double timeout;
-        public double startTime;
+        private final ReturningFunc<Boolean> condition;
+        private final double timeout;
+        private double startTime;
 
         public SleepUntilTrue(ReturningFunc<Boolean> condition, double timeout) {
             this.condition = condition;
@@ -258,7 +263,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
 
         @Override
         boolean runProcedure() {
-            if (isStart && timeout != Double.POSITIVE_INFINITY) {
+            if (isStart() && timeout != Double.POSITIVE_INFINITY) {
                 startTime = timer.time();
             }
             return !condition.call() && (timer.time() - startTime) < timeout;
@@ -266,8 +271,8 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
 
     public static class NonLinearSleepAction extends NonLinearAction { //Sleeps for a set time
-        double time;
-        double startTime;
+        private final double time;
+        private double startTime;
 
         public NonLinearSleepAction(double time) {
             this.time = time;
@@ -275,15 +280,15 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
 
         @Override
         boolean runProcedure() {
-            if (isStart) {
+            if (isStart()) {
                 startTime = timer.time();
             }
             return (timer.time() - startTime) < time;
         }
     }
     public static class InterruptOnTimeout extends NonLinearAction{ //Action to run the action passed to it, but interrupt it after it's been running for a given time
-        NonLinearAction action;
-        NonLinearSleepAction sleepAction;
+        private final NonLinearAction action;
+        private final NonLinearSleepAction sleepAction;
         boolean actionEnded=false;
         public InterruptOnTimeout(double time, NonLinearAction action){
             this.action=action;
@@ -291,7 +296,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
         @Override
         boolean runProcedure() {
-            if (isStart){
+            if (isStart()){
                 sleepAction.reset();
                 action.reset();
                 actionEnded=false;
@@ -313,16 +318,16 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
     }
     public static class InterruptOnCondition extends NonLinearAction{ //Action to run the action passed to it, but interrupt it after a given condition is met
-        NonLinearAction action;
-        SleepUntilTrue sleepAction;
-        boolean actionEnded=false;
+        private final NonLinearAction action;
+        private final SleepUntilTrue sleepAction;
+        private boolean actionEnded=false;
         public InterruptOnCondition(Condition condition, NonLinearAction action){
             this.action=action;
             this.sleepAction=new SleepUntilTrue(condition);
         }
         @Override
         boolean runProcedure() {
-            if (isStart){
+            if (isStart()){
                 sleepAction.reset();
                 action.reset();
                 actionEnded=false;
@@ -344,9 +349,9 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
     }
     public static class NonLinearSequentialAction extends NonLinearAction implements MappedActionGroup<Integer> { //Runs actions sequentially
-        public ArrayList<NonLinearAction> remainingActions;
-        public ArrayList<NonLinearAction> actions;
-        public ArrayList<Boolean> isStarts;
+        private ArrayList<NonLinearAction> remainingActions;
+        private final ArrayList<NonLinearAction> actions;
+        private final ArrayList<Boolean> isStarts;
 
         public NonLinearSequentialAction(NonLinearAction... actions) {
             this.actions = new ArrayList<>(Arrays.asList(actions));
@@ -363,7 +368,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
 
         @Override
         public boolean runProcedure() {
-            if (isStart) {
+            if (isStart()) {
                 remainingActions = new ArrayList<>(actions);
                 for (int i = 0; i < actions.size(); i++) {
                     isStarts.set(i,true);
@@ -401,8 +406,8 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
 
     public static class NonLinearParallelAction extends NonLinearAction implements UnmappedActionGroup { //Runs actions in parallel
-        public ArrayList<NonLinearAction> remainingActions;
-        public ArrayList<NonLinearAction> actions;
+        private ArrayList<NonLinearAction> remainingActions;
+        protected final ArrayList<NonLinearAction> actions;
         public NonLinearParallelAction(NonLinearAction... actions) {
             this.actions = new ArrayList<>(Arrays.asList(actions));
             this.remainingActions = new ArrayList<>(this.actions);
@@ -411,7 +416,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
 
         @Override
         public boolean runProcedure() {
-            if (isStart) {
+            if (isStart()) {
                 remainingActions = new ArrayList<>(actions);
                 for (NonLinearAction action : remainingActions) {
                     action.reset();
@@ -450,8 +455,8 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
 
     public static class IfThen { //Holds a condition and an action to be executed if it is met
-        public ReturningFunc<Boolean> condition;
-        public NonLinearAction action;
+        private final ReturningFunc<Boolean> condition;
+        private final NonLinearAction action;
 
         public IfThen(ReturningFunc<Boolean> condition, NonLinearAction action) {
             this.condition = condition;
@@ -460,8 +465,8 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
 
     public static class ConditionalAction extends NonLinearAction implements MappedActionGroup<ReturningFunc<Boolean>> { //Executes actions if their respective conditions are met, in an if,else-if,else manner. Only one action can run at a time. If one action's condition stops being met, it will finish, unless another action's condition starts being met, in which case it will stop and switch to that action
-        public LinkedHashMap<ReturningFunc<Boolean>, NonLinearAction> actions = new LinkedHashMap<>();
-        public NonLinearAction currentAction = null;
+        protected final LinkedHashMap<ReturningFunc<Boolean>, NonLinearAction> actions = new LinkedHashMap<>();
+        protected NonLinearAction currentAction = null;
         public ConditionalAction(IfThen... conditionalPairs) {
             for (IfThen conditionalPair : conditionalPairs) {
                 actions.put(conditionalPair.condition, conditionalPair.action);
@@ -471,7 +476,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
 
         @Override
         boolean runProcedure() {
-            if (isStart) {
+            if (isStart()) {
                 for (ReturningFunc<Boolean> condition : actions.keySet()) {
                     if (condition.call()) {
                         if (actions.get(condition) != currentAction) {
@@ -524,8 +529,8 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
 
     public static class PersistentConditionalAction extends PersistentNonLinearAction implements MappedActionGroup<ReturningFunc<Boolean>>{ //ConditionalAction, but an action cannot be interrupted
-        public LinkedHashMap<ReturningFunc<Boolean>, NonLinearAction> actions = new LinkedHashMap<>();
-        public NonLinearAction currentAction = null;
+        protected final LinkedHashMap<ReturningFunc<Boolean>, NonLinearAction> actions = new LinkedHashMap<>();
+        protected NonLinearAction currentAction = null;
 
         public PersistentConditionalAction(IfThen... conditionalPairs) {
             for (IfThen conditionalPair : conditionalPairs) {
@@ -570,8 +575,8 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
 
     public static class SemiPersistentConditionalAction extends NonLinearAction implements MappedActionGroup<ReturningFunc<Boolean>> { //ConditionalAction, but an action can only be interrupted if the SemiPersistentConditionalAction is reset()
-        public LinkedHashMap<ReturningFunc<Boolean>, NonLinearAction> actions = new LinkedHashMap<>();
-        public NonLinearAction currentAction = null;
+        private final LinkedHashMap<ReturningFunc<Boolean>, NonLinearAction> actions = new LinkedHashMap<>();
+        private NonLinearAction currentAction = null;
 
         public SemiPersistentConditionalAction(IfThen... conditionalPairs) {
             for (IfThen conditionalPair : conditionalPairs) {
@@ -582,7 +587,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
 
         @Override
         boolean runProcedure() {
-            if (isStart) {
+            if (isStart()) {
                 for (ReturningFunc<Boolean> condition : actions.keySet()) {
                     if (condition.call()) {
                         if (actions.get(condition) != currentAction) {
@@ -622,7 +627,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
 
     public static class PressTrigger extends ConditionalAction { //ConditionalAction, but all conditions are converted into button-presses, such that they will not return 'true' two loop-iterations in a row.
-        public ArrayList<Boolean> isPressed;
+        private final ArrayList<Boolean> isPressed;
 
         public PressTrigger(IfThen... conditionalPairs) {
             super(conditionalPairs);
@@ -689,7 +694,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
 
     public static class PersistentPressTrigger extends PersistentConditionalAction { //PressTrigger but persistent
-        public ArrayList<Boolean> isPressed;
+        private final ArrayList<Boolean> isPressed;
         public PersistentPressTrigger(IfThen... conditionalPairs) {
             super(conditionalPairs);
             actions.clear();
@@ -749,9 +754,9 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
     }
     public static class LoopForDuration extends NonLinearAction { //Loops an action for a certain duration
-        double startTime;
-        double duration;
-        NonLinearAction action;
+        private double startTime;
+        private final double duration;
+        private final NonLinearAction action;
 
         public LoopForDuration(double duration, NonLinearAction action) {
             this.duration = duration;
@@ -760,7 +765,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
 
         @Override
         boolean runProcedure() {
-            if (isStart) {
+            if (isStart()) {
                 startTime = timer.time();
                 action.reset();
             }
@@ -774,10 +779,10 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
     }
     public static class LoopUntilTrue extends NonLinearAction { //Loops an action until a condition is met, or until an optional timeout is reached
-        double startTime;
-        Condition condition;
-        double timeout;
-        NonLinearAction action;
+        private double startTime;
+        private final Condition condition;
+        private final double timeout;
+        private final NonLinearAction action;
 
         public LoopUntilTrue(Condition condition, NonLinearAction action, double timeout) {
             this.condition = condition;
@@ -789,7 +794,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
         @Override
         boolean runProcedure() {
-            if (isStart) {
+            if (isStart()) {
                 startTime = timer.time();
                 action.reset();
             }
@@ -803,9 +808,9 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
     }
     public static class ResetAndLoopForDuration extends NonLinearAction { //Loops an action for a certain duration
-        double startTime;
-        double duration;
-        NonLinearAction action;
+        private double startTime;
+        private final double duration;
+        private final NonLinearAction action;
 
         public ResetAndLoopForDuration(double duration, NonLinearAction action) {
             this.duration = duration;
@@ -814,7 +819,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
 
         @Override
         boolean runProcedure() {
-            if (isStart) {
+            if (isStart()) {
                 startTime = timer.time();
             }
             if ((timer.time() - startTime) < duration) {
@@ -827,10 +832,10 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
     }
     public static class ResetAndLoopUntilTrue extends NonLinearAction { //Loops an action until a condition is met, or until an optional timeout is reached
-        double startTime;
-        Condition condition;
-        double timeout;
-        NonLinearAction action;
+        private double startTime;
+        private final Condition condition;
+        private final double timeout;
+        private final NonLinearAction action;
 
         public ResetAndLoopUntilTrue(Condition condition, NonLinearAction action, double timeout) {
             this.condition = condition;
@@ -842,7 +847,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
         @Override
         boolean runProcedure() {
-            if (isStart) {
+            if (isStart()) {
                 startTime = timer.time();
             }
             if (!condition.call() && (timer.time() - startTime) < timeout) {
@@ -854,8 +859,8 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             }
         }
     }
-    public abstract static class SleepUntilPose extends SleepUntilTrue { //Sleeps until the drivetrain and heading get a certain distance from a desired position and heading, or until an optional timeout is reached
-        public static ReturningFunc<double[]> getPose;
+    public abstract static class SleepUntilPose extends SleepUntilTrue { //Sleeps until the drivetrain and heading get a certain distance from a desired position and heading, or until an optional timeout is reached. Meant to be subclassed depending on the pathing library.
+        public static ReturningFunc<double[]> getPose; //Subclasses assign this to a method that can get the drivetrain position, returning x, y, and heading.
         public static void setGetPose(ReturningFunc<double[]> getPose){
             SleepUntilPose.getPose=getPose;
         }
@@ -877,14 +882,14 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
 
     public abstract static class PathAction<E> extends NonLinearAction { //Action for autonomous pathing. Must be subclassed to create an implementation for a specific autonomous library. Parameterized to the actual path object it is based off of.
-        ReturningFunc<E> buildPath;
-        public E path; //Stores the path this action follows. For RR it would be a TrajectoryAction, for Pedro it would be a PathChain
+        private final ReturningFunc<E> buildPath;
+        private E path; //Stores the path this action follows. For RR it would be a TrajectoryAction, for Pedro it would be a PathChain
         public PathAction(ReturningFunc<E> buildPath) {
             this.buildPath = buildPath;
         }
         @Override
         boolean runProcedure() {
-            if (isStart) {
+            if (isStart()) {
                 preBuild();
                 path = buildPath.call(); //Path is built when the action needs to run (useful for RoadRunner)
             }
@@ -895,6 +900,9 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
 
         public void preBuild() {
         } //Here, one can code anything that must occur right before the path is built.
+        public E getPath(){
+            return path;
+        }
     }
 
     public static class RobotCentricMecanumAction extends NonLinearAction { //Action for robot-centric TeleOp drivetrain control
@@ -1108,7 +1116,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
     }
     public static class ParallelActionExecutor implements UnmappedActionGroup{
-        public ArrayList<NonLinearAction> commandGroups;
+        private ArrayList<NonLinearAction> commandGroups;
         public ParallelActionExecutor(NonLinearAction...commandGroups){
             this.commandGroups=new ArrayList<>(Arrays.asList(commandGroups));
             registerActions(commandGroups);
@@ -1122,7 +1130,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 }
                 if (actuator instanceof Components.CRActuator && ((Components.CRActuator<?>) actuator).dynamicPowerBoundaries) { //If the CRActuator's power boundaries can change, this will ensure that the CRActuator's power never falls outside of the boundaries
                     Components.CRActuator<?> castedActuator = ((Components.CRActuator<?>) actuator);
-                    castedActuator.setPower(Objects.requireNonNull(castedActuator.powers.get(castedActuator.partNames[0])));
+                    castedActuator.setPower(castedActuator.getPower(castedActuator.partNames[0]));
                 }
                 actuator.runControl();
                 actuator.resetCurrentPositions();

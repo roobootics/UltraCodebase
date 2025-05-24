@@ -8,16 +8,15 @@ import com.qualcomm.robotcore.hardware.Servo;
 
 public abstract class TimeBasedLocalizers{
     public static class ServoTimeBasedLocalizer{ //Calculates position of a servo based on time
-        public double ABS_SERVO_SPEED;
-        public double prevPosition;
-        public double prevTime;
-        public double targetPos;
+        private final double ABS_SERVO_SPEED;
+        private double prevPosition;
+        private double prevTime;
         public ServoTimeBasedLocalizer(double servoSpeed){
             this.ABS_SERVO_SPEED=servoSpeed;
         }
         public double getCurrentPosition(Servo servo) {
             if (!Double.isNaN(servo.getPosition())){
-                targetPos =servo.getPosition();
+                double targetPos = servo.getPosition();
                 double servoSpeed = Math.signum(targetPos - prevPosition)*ABS_SERVO_SPEED;
                 double time=timer.time();
                 double change = servoSpeed*(time-prevTime);
@@ -33,10 +32,10 @@ public abstract class TimeBasedLocalizers{
         }
     }
     public static class CRTimeBasedLocalizer<E extends DcMotorSimple>{ //Calculates position of a continuous rotation actuator based on time
-        public double ABS_SERVO_SPEED;
-        public double prevPosition;
-        public double prevTime;
-        public double prevPower;
+        private final double ABS_SERVO_SPEED;
+        private double prevPosition;
+        private double prevTime;
+        private double prevPower;
         public CRTimeBasedLocalizer(double servoSpeed){
             this.ABS_SERVO_SPEED=servoSpeed;
         }
