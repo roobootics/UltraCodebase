@@ -21,6 +21,7 @@ import java.util.Objects;
 import org.firstinspires.ftc.teamcode.base.LambdaInterfaces.Condition;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public abstract class NonLinearActions { //Command-based (or action-based) system
@@ -993,6 +994,60 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                                 new IfThen(state::get,action1),
                                 new IfThen(()->(!state.get()),action2)
                         )
+                )
+        );
+    }
+    public static PressTrigger triggeredFSMAction(Condition upCondition, Condition downCondition, NonLinearAction...actions){
+        AtomicInteger state = new AtomicInteger(0);
+        IfThen[] upIfThens = new IfThen[actions.length];
+        for (int i=0;i<upIfThens.length;i++){
+            int finalI = i;
+            upIfThens[i]=new IfThen(
+                    ()->(state.get()==finalI),
+                    new NonLinearSequentialAction(actions[i],new InstantAction(()->{if (state.get()<actions.length){state.set(state.get()+1);}}))
+            );
+        }
+        IfThen[] downIfThens = new IfThen[actions.length];
+        for (int i=0;i<downIfThens.length;i++){
+            int finalI = i;
+            downIfThens[i]=new IfThen(
+                    ()->(state.get()==finalI),
+                    new NonLinearSequentialAction(actions[i],new InstantAction(()->{if (state.get()>0){state.set(state.get()-1);}}))
+            );
+        }
+        return new PressTrigger(
+                new IfThen(upCondition,
+                        new SemiPersistentConditionalAction(
+                                upIfThens
+                        )
+                ),
+                new IfThen(downCondition,
+                    new SemiPersistentConditionalAction(
+                            downIfThens
+                    )
+                )
+        );
+    }
+    public static PressTrigger triggeredCycleAction(Condition condition, NonLinearAction...actions){
+        AtomicInteger state = new AtomicInteger(0);
+        IfThen[] ifThens=new IfThen[actions.length];
+        for (int i=0;i< ifThens.length;i++){
+            int finalI = i;
+            ifThens[i]=new IfThen(
+                    ()->(state.get()==finalI),
+                    new NonLinearSequentialAction(actions[finalI], new InstantAction(()->{
+                        if (state.get()==actions.length-1){
+                            state.set(0);
+                        }
+                        else{state.set(state.get()+1);}
+                    }))
+            );
+        }
+        return new PressTrigger(
+                new IfThen(condition,
+                    new SemiPersistentConditionalAction(
+                        ifThens
+                    )
                 )
         );
     }
