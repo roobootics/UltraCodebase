@@ -71,28 +71,22 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         ArrayList<Procedure> scheduledRemovals = new ArrayList<>();
         ArrayList<Procedure> scheduledAdditions = new ArrayList<>();
         default void addAction(K key, NonLinearAction action) { //Method that schedules the adding of an action for the end of the loop (required to avoid concurrent modifications)
-            action.registerRemoveFromGroup(() -> this.removeAction(action));
+            action.registerRemoveFromGroup(() -> this.removeAction(key));
             action.reset();
             scheduledAdditions.add(()->addActionProcedure(key, action));
         }
 
         void addActionProcedure(K key, NonLinearAction action); //Allows action groups to add actions to the group
 
-        default void removeAction(NonLinearAction action){ //Method that schedules the removal of an action for the end of the loop (required to avoid concurrent modifications)
-            action.stop();
-            scheduledRemovals.add(()->removeActionProcedure(action));
+        default void removeAction(K key){ //Method that schedules the removal of an action for the end of the loop (required to avoid concurrent modifications)
+            scheduledRemovals.add(()->removeActionProcedure(key));
         }
-        void removeActionProcedure(NonLinearAction action); //Allows action groups to remove actions from the group
-        default void registerActions(NonLinearAction...actions){
-            for (NonLinearAction action : actions) {
-                action.registerRemoveFromGroup(() -> this.removeAction(action));
-            }
-        }
+        void removeActionProcedure(K key); //Allows action groups to remove actions from the group
         default InstantAction addToGroupAction(K key, NonLinearAction action){
             return new InstantAction(()->addAction(key,action));
         }
-        default InstantAction removeFromGroupAction(NonLinearAction action){
-            return new InstantAction(()->removeAction(action));
+        default InstantAction removeFromGroupAction(K key){
+            return new InstantAction(()->removeAction(key));
         }
     }
 
@@ -362,7 +356,10 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             for (NonLinearAction action : actions) {
                 isStarts.add(true);
             }
-            registerActions(actions);
+            for (int i=0;i<actions.length;i++){
+                int finalI = i;
+                this.actions.get(i).registerRemoveFromGroup(()->removeAction(finalI));
+            }
         }
 
         @Override
@@ -396,10 +393,10 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
 
         @Override
-        public void removeActionProcedure(NonLinearAction action) {
-            isStarts.remove(actions.indexOf(action));
-            actions.remove(action);
-            remainingActions.remove(action);
+        public void removeActionProcedure(Integer key) {
+            isStarts.remove((int) key);
+            actions.remove((int) key);
+            remainingActions.remove((int) key);
         }
     }
 
@@ -468,8 +465,8 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         public ConditionalAction(IfThen... conditionalPairs) {
             for (IfThen conditionalPair : conditionalPairs) {
                 actions.put(conditionalPair.condition, conditionalPair.action);
+                conditionalPair.action.registerRemoveFromGroup(()->removeAction(conditionalPair.condition));
             }
-            registerActions(actions.values().toArray(new NonLinearAction[0]));
         }
 
         @Override
@@ -517,15 +514,11 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             actions.put(key,action);
         }
         @Override
-        public void removeActionProcedure(NonLinearAction action) {
-            for (ReturningFunc<Boolean> key: actions.keySet()){
-                if (actions.get(key)==action){
-                    if (currentAction==actions.get(key)){
-                        currentAction=null;
-                    }
-                    actions.remove(key);
-                }
+        public void removeActionProcedure(ReturningFunc<Boolean> condition) {
+            if (currentAction==actions.get(condition)){
+                currentAction=null;
             }
+            actions.remove(condition);
         }
     }
 
@@ -536,8 +529,8 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         public PersistentConditionalAction(IfThen... conditionalPairs) {
             for (IfThen conditionalPair : conditionalPairs) {
                 actions.put(conditionalPair.condition, conditionalPair.action);
+                conditionalPair.action.registerRemoveFromGroup(()->removeAction(conditionalPair.condition));
             }
-            registerActions(actions.values().toArray(new NonLinearAction[0]));
         }
 
         @Override
@@ -566,15 +559,11 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             actions.put(key,action);
         }
         @Override
-        public void removeActionProcedure(NonLinearAction action) {
-            for (ReturningFunc<Boolean> key: actions.keySet()){
-                if (actions.get(key)==action){
-                    if (currentAction==actions.get(key)){
-                        currentAction=null;
-                    }
-                    actions.remove(key);
-                }
+        public void removeActionProcedure(ReturningFunc<Boolean> condition) {
+            if (currentAction==actions.get(condition)){
+                currentAction=null;
             }
+            actions.remove(condition);
         }
     }
 
@@ -585,8 +574,8 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         public SemiPersistentConditionalAction(IfThen... conditionalPairs) {
             for (IfThen conditionalPair : conditionalPairs) {
                 actions.put(conditionalPair.condition, conditionalPair.action);
+                conditionalPair.action.registerRemoveFromGroup(()->removeAction(conditionalPair.condition));
             }
-            registerActions(actions.values().toArray(new NonLinearAction[0]));
         }
 
         @Override
@@ -621,15 +610,11 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             actions.put(key,action);
         }
         @Override
-        public void removeActionProcedure(NonLinearAction action) {
-            for (ReturningFunc<Boolean> key: actions.keySet()){
-                if (actions.get(key)==action){
-                    if (currentAction==actions.get(key)){
-                        currentAction=null;
-                    }
-                    actions.remove(key);
-                }
+        public void removeActionProcedure(ReturningFunc<Boolean> condition) {
+            if (currentAction==actions.get(condition)){
+                currentAction=null;
             }
+            actions.remove(condition);
         }
     }
 
@@ -668,18 +653,19 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             isPressed.add(false);
         }
         @Override
-        public void removeAction(NonLinearAction action){
+        public void removeAction(ReturningFunc<Boolean> condition){
+            if (currentAction==actions.get(condition)){
+                currentAction=null;
+            }
             ReturningFunc<Boolean> matchingKey = null;
             int matchingIndex=0;
             for (ReturningFunc<Boolean> key:actions.keySet()){
-                if (actions.get(key)==action){
-                    matchingKey=key;
+                if (key.equals(condition)){
+                    break;
                 }
-                else{
-                    matchingIndex++;
-                }
+                matchingIndex++;
             }
-            actions.remove(matchingKey);
+            actions.remove(condition);
             isPressed.remove(matchingIndex);
         }
     }
@@ -713,18 +699,19 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             isPressed.add(false);
         }
         @Override
-        public void removeAction(NonLinearAction action){
+        public void removeAction(ReturningFunc<Boolean> condition){
+            if (currentAction==actions.get(condition)){
+                currentAction=null;
+            }
             ReturningFunc<Boolean> matchingKey = null;
             int matchingIndex=0;
             for (ReturningFunc<Boolean> key:actions.keySet()){
-                if (actions.get(key)==action){
-                    matchingKey=key;
+                if (key.equals(condition)){
+                    break;
                 }
-                else{
-                    matchingIndex++;
-                }
+                matchingIndex++;
             }
-            actions.remove(matchingKey);
+            actions.remove(condition);
             isPressed.remove(matchingIndex);
         }
     }
