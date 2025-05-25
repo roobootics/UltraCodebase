@@ -812,7 +812,9 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 reset();
             }
             if ((timer.time() - startTime) < duration) {
-                super.runProcedure();
+                for (NonLinearAction action : actions){
+                    action.run();
+                }
                 return true;
             } else {
                 stop();
@@ -840,7 +842,9 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 reset();
             }
             if (!condition.call() && (timer.time() - startTime) < timeout) {
-                super.runProcedure();
+                for (NonLinearAction action : actions){
+                    action.run();
+                }
                 return true;
             } else {
                 stop();
