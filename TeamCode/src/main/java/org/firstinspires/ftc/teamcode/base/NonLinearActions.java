@@ -628,7 +628,6 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
 
     public static class PressTrigger extends ConditionalAction { //ConditionalAction, but all conditions are converted into button-presses, such that they will not return 'true' two loop-iterations in a row.
         private final ArrayList<Boolean> isPressed;
-
         public PressTrigger(IfThen... conditionalPairs) {
             super(conditionalPairs);
             actions.clear();
@@ -656,7 +655,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             }
         }
         @Override
-        public void addAction(ReturningFunc<Boolean> condition, NonLinearAction action){
+        public void addActionProcedure(ReturningFunc<Boolean> condition, NonLinearAction action){
             isPressed.add(false);
             int index=isPressed.size()-1;
             actions.put(() -> {
@@ -675,12 +674,11 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             },action);
         }
         @Override
-        public void removeAction(ReturningFunc<Boolean> condition){
+        public void removeActionProcedure(ReturningFunc<Boolean> condition){
             Objects.requireNonNull(actions.get(condition)).stop();
             if (currentAction==actions.get(condition)){
                 currentAction=null;
             }
-            ReturningFunc<Boolean> matchingKey = null;
             int matchingIndex=0;
             for (ReturningFunc<Boolean> key:actions.keySet()){
                 if (key.equals(condition)){
@@ -690,6 +688,29 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             }
             actions.remove(condition);
             isPressed.remove(matchingIndex);
+        }
+        public void removeActionProcedure(NonLinearAction action){
+            action.stop();
+            if (currentAction==action){
+                currentAction=null;
+            }
+            ReturningFunc<Boolean> matchingKey = null;
+            int matchingIndex=0;
+            for (ReturningFunc<Boolean> key:actions.keySet()){
+                if (actions.get(key)==action){
+                    matchingKey=key;
+                    break;
+                }
+                matchingIndex++;
+            }
+            actions.remove(matchingKey);
+            isPressed.remove(matchingIndex);
+        }
+        public void removeAction(NonLinearAction action){
+            scheduledRemovals.add(()->removeActionProcedure(action));
+        }
+        public NonLinearAction removeFromGroupAction(NonLinearAction action){
+            return new InstantAction(()->removeAction(action));
         }
     }
 
@@ -717,7 +738,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             }
         }
         @Override
-        public void addAction(ReturningFunc<Boolean> condition, NonLinearAction action){
+        public void addActionProcedure(ReturningFunc<Boolean> condition, NonLinearAction action){
             isPressed.add(false);
             int index=isPressed.size()-1;
             actions.put(() -> {
@@ -736,7 +757,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             },action);
         }
         @Override
-        public void removeAction(ReturningFunc<Boolean> condition){
+        public void removeActionProcedure(ReturningFunc<Boolean> condition){
             Objects.requireNonNull(actions.get(condition)).stop();
             if (currentAction==actions.get(condition)){
                 currentAction=null;
@@ -752,109 +773,127 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             actions.remove(condition);
             isPressed.remove(matchingIndex);
         }
+        public void removeActionProcedure(NonLinearAction action){
+            action.stop();
+            if (currentAction==action){
+                currentAction=null;
+            }
+            ReturningFunc<Boolean> matchingKey = null;
+            int matchingIndex=0;
+            for (ReturningFunc<Boolean> key:actions.keySet()){
+                if (actions.get(key)==action){
+                    matchingKey=key;
+                    break;
+                }
+                matchingIndex++;
+            }
+            actions.remove(matchingKey);
+            isPressed.remove(matchingIndex);
+        }
+        public void removeAction(NonLinearAction action){
+            scheduledRemovals.add(()->removeActionProcedure(action));
+        }
+        public NonLinearAction removeFromGroupAction(NonLinearAction action){
+            return new InstantAction(()->removeAction(action));
+        }
     }
-    public static class LoopForDuration extends NonLinearAction { //Loops an action for a certain duration
+    public static class LoopForDuration extends NonLinearParallelAction { //Loops an action for a certain duration
         private double startTime;
         private final double duration;
-        private final NonLinearAction action;
-
-        public LoopForDuration(double duration, NonLinearAction action) {
+        public LoopForDuration(double duration, NonLinearAction...actions) {
+            super(actions);
             this.duration = duration;
-            this.action = action;
         }
 
         @Override
-        boolean runProcedure() {
+        public boolean runProcedure() {
             if (isStart()) {
                 startTime = timer.time();
-                action.reset();
+                reset();
             }
             if ((timer.time() - startTime) < duration) {
-                action.run();
+                super.runProcedure();
                 return true;
             } else {
-                action.stop();
+                stop();
                 return false;
             }
         }
     }
-    public static class LoopUntilTrue extends NonLinearAction { //Loops an action until a condition is met, or until an optional timeout is reached
+    public static class LoopUntilTrue extends NonLinearParallelAction { //Loops an action until a condition is met, or until an optional timeout is reached
         private double startTime;
         private final Condition condition;
         private final double timeout;
-        private final NonLinearAction action;
 
-        public LoopUntilTrue(Condition condition, NonLinearAction action, double timeout) {
+        public LoopUntilTrue(Condition condition, double timeout, NonLinearAction... actions) {
+            super(actions);
             this.condition = condition;
-            this.action = action;
             this.timeout=timeout;
         }
-        public LoopUntilTrue(Condition condition, NonLinearAction action) {
-            this(condition,action,Double.POSITIVE_INFINITY);
+        public LoopUntilTrue(Condition condition, NonLinearAction... actions) {
+            this(condition,Double.POSITIVE_INFINITY,actions);
         }
         @Override
-        boolean runProcedure() {
+        public boolean runProcedure() {
             if (isStart()) {
                 startTime = timer.time();
-                action.reset();
+                reset();
             }
             if (!condition.call() && (timer.time() - startTime) < timeout) {
-                action.run();
+                super.runProcedure();
                 return true;
             } else {
-                action.stop();
+                stop();
                 return false;
             }
         }
     }
-    public static class ResetAndLoopForDuration extends NonLinearAction { //Loops an action for a certain duration
+    public static class ResetAndLoopForDuration extends NonLinearParallelAction { //Loops an action for a certain duration
         private double startTime;
         private final double duration;
-        private final NonLinearAction action;
 
-        public ResetAndLoopForDuration(double duration, NonLinearAction action) {
+        public ResetAndLoopForDuration(double duration, NonLinearAction... actions) {
+            super(actions);
             this.duration = duration;
-            this.action = action;
         }
 
         @Override
-        boolean runProcedure() {
+        public boolean runProcedure() {
             if (isStart()) {
                 startTime = timer.time();
             }
             if ((timer.time() - startTime) < duration) {
-                action.reset(); action.run();
+                reset(); super.runProcedure();
                 return true;
             } else {
-                action.stop();
+                stop();
                 return false;
             }
         }
     }
-    public static class ResetAndLoopUntilTrue extends NonLinearAction { //Loops an action until a condition is met, or until an optional timeout is reached
+    public static class ResetAndLoopUntilTrue extends NonLinearParallelAction { //Loops an action until a condition is met, or until an optional timeout is reached
         private double startTime;
         private final Condition condition;
         private final double timeout;
-        private final NonLinearAction action;
 
-        public ResetAndLoopUntilTrue(Condition condition, NonLinearAction action, double timeout) {
+        public ResetAndLoopUntilTrue(Condition condition, double timeout, NonLinearAction...actions) {
+            super(actions);
             this.condition = condition;
-            this.action = action;
             this.timeout=timeout;
         }
-        public ResetAndLoopUntilTrue(Condition condition, NonLinearAction action) {
-            this(condition,action,Double.POSITIVE_INFINITY);
+        public ResetAndLoopUntilTrue(Condition condition, NonLinearAction... actions) {
+            this(condition,Double.POSITIVE_INFINITY,actions);
         }
         @Override
-        boolean runProcedure() {
+        public boolean runProcedure() {
             if (isStart()) {
                 startTime = timer.time();
             }
             if (!condition.call() && (timer.time() - startTime) < timeout) {
-                action.reset(); action.run();
+                reset(); super.runProcedure();
                 return true;
             } else {
-                action.stop();
+                stop();
                 return false;
             }
         }
@@ -1116,14 +1155,14 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
     }
     public static class ParallelActionExecutor implements UnmappedActionGroup{
-        private ArrayList<NonLinearAction> commandGroups;
+        private ArrayList<NonLinearAction> actions;
         public ParallelActionExecutor(NonLinearAction...commandGroups){
-            this.commandGroups=new ArrayList<>(Arrays.asList(commandGroups));
+            this.actions =new ArrayList<>(Arrays.asList(commandGroups));
             registerActions(commandGroups);
         }
         public void runOnce(){
             conductActionModifications();
-            this.commandGroups=commandGroups.stream().filter(NonLinearAction::run).collect(Collectors.toCollection(ArrayList::new));
+            this.actions = actions.stream().filter(NonLinearAction::run).collect(Collectors.toCollection(ArrayList::new));
             for (Components.Actuator<?> actuator : actuators.values()) {
                 if (actuator.getDynamicTargetBoundaries()) { //If the actuator's target boundaries can change, this will ensure that the actuator's target never falls outside of the boundaries
                     actuator.setTarget(actuator.getTargetMinusOffset());
@@ -1145,17 +1184,17 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             stop();
         }
         public void stop(){
-            for (NonLinearAction commandGroup : commandGroups){
-                commandGroup.stop();
+            for (NonLinearAction action : actions){
+                action.stop();
             }
         }
         @Override
-        public void addActionProcedure(NonLinearAction commandGroup) {
-            commandGroups.add(commandGroup);
+        public void addActionProcedure(NonLinearAction action) {
+            actions.add(action);
         }
         @Override
-        public void removeActionProcedure(NonLinearAction commandGroup) {
-            commandGroups.remove(commandGroup);
+        public void removeActionProcedure(NonLinearAction action) {
+            actions.remove(action);
         }
     }
 }
