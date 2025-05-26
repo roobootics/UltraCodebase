@@ -49,7 +49,7 @@ public abstract class GenericPositionFinder extends LinearOpMode { //Used to fin
             int finalI = i;
             conditions[i]=new NonLinearActions.IfThen(
                     ()->(selectedActuatorIndex==finalI),
-                    Objects.requireNonNull(actuators.get(actuatorNames.get(i))).triggeredDynamicAction(()->(gamepad1.left_bumper),()->(gamepad1.right_bumper),0.1)
+                    Objects.requireNonNull(actuators.get(actuatorNames.get(i))).triggeredDynamicTargetAction(()->(gamepad1.left_bumper),()->(gamepad1.right_bumper),0.1)
             );
         }
 

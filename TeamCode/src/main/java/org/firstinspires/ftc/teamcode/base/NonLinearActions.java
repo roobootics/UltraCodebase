@@ -526,6 +526,12 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             }
             actions.remove(condition);
         }
+        @Override
+        public void stopProcedure(){
+            if (Objects.nonNull(currentAction)){
+                currentAction.stop();
+            }
+        }
     }
 
     public static class PersistentConditionalAction extends PersistentNonLinearAction implements MappedActionGroup<ReturningFunc<Boolean>>{ //ConditionalAction, but an action cannot be interrupted
@@ -571,6 +577,12 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 currentAction=null;
             }
             actions.remove(condition);
+        }
+        @Override
+        public void stopProcedure(){
+            if (Objects.nonNull(currentAction)){
+                currentAction.stop();
+            }
         }
     }
 
@@ -623,6 +635,12 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 currentAction=null;
             }
             actions.remove(condition);
+        }
+        @Override
+        public void stopProcedure(){
+            if (Objects.nonNull(currentAction)){
+                currentAction.stop();
+            }
         }
     }
 
@@ -1068,8 +1086,14 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 )
         );
     }
-    public static PressTrigger triggeredFSMAction(Condition upCondition, Condition downCondition, NonLinearAction...actions){
-        AtomicInteger state = new AtomicInteger(-1);
+    public static PressTrigger triggeredFSMAction(Condition upCondition, Condition downCondition, int startingState, NonLinearAction...actions){
+        if (startingState>actions.length){
+            startingState= actions.length;
+        }
+        else if (startingState<0){
+            startingState=0;
+        }
+        AtomicInteger state = new AtomicInteger(-1+startingState);
         IfThen[] upIfThens = new IfThen[actions.length];
         for (int i=0;i<upIfThens.length;i++){
             int finalI = i;

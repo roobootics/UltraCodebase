@@ -284,8 +284,8 @@ public abstract class Components {
         public void resetCurrentPositions(){
             currentPositions.replaceAll((k, v) -> Double.NaN);
         }
-        public class SetTargetAction extends CompoundAction { //Action to set the target, then wait until the position of the actuator is a certain distance from the target, or until a set timeout
-            public SetTargetAction(ReturningFunc<Double> targetFunc, double timeout){
+        public class MoveToTargetAction extends CompoundAction { //Action to set the target, then wait until the position of the actuator is a certain distance from the target, or until a set timeout
+            public MoveToTargetAction(ReturningFunc<Double> targetFunc, double timeout){
                 group = new NonLinearSequentialAction(
                         new InstantAction(()-> setTarget(targetFunc.call())),
                         new SleepUntilTrue(
@@ -294,13 +294,13 @@ public abstract class Components {
                         )
                 );
             }
-            public SetTargetAction(double target, double timeout){
+            public MoveToTargetAction(double target, double timeout){
                 this(()->(target), timeout);
             }
-            public SetTargetAction(ReturningFunc<Double> targetFunc){
+            public MoveToTargetAction(ReturningFunc<Double> targetFunc){
                 this(targetFunc, defaultTimeout);
             }
-            public SetTargetAction(double target){
+            public MoveToTargetAction(double target){
                 this(()->(target), defaultTimeout);
             }
             @Override
@@ -332,26 +332,26 @@ public abstract class Components {
                 setTarget(getCurrentPosition());
             }
         }
-        public SetTargetAction setTargetAction(double target){
-            return new SetTargetAction(target);
+        public MoveToTargetAction moveToTargetAction(double target){
+            return new MoveToTargetAction(target);
         }
-        public SetTargetAction setTargetAction(ReturningFunc<Double> targetFunc){
-            return new SetTargetAction(targetFunc);
+        public MoveToTargetAction moveToTargetAction(ReturningFunc<Double> targetFunc){
+            return new MoveToTargetAction(targetFunc);
         }
-        public SetTargetAction setTargetAction(double target, double timeout){
-            return new SetTargetAction(target,timeout);
+        public MoveToTargetAction moveToTargetAction(double target, double timeout){
+            return new MoveToTargetAction(target,timeout);
         }
-        public SetTargetAction setTargetAction(ReturningFunc<Double> targetFunc, double timeout){
-            return new SetTargetAction(targetFunc);
+        public MoveToTargetAction moveToTargetAction(ReturningFunc<Double> targetFunc, double timeout){
+            return new MoveToTargetAction(targetFunc);
         }
-        public SetTargetAction toggleAction(double target1, double target2){
-            return setTargetAction(()->{
+        public MoveToTargetAction toggleTargetAction(double target1, double target2){
+            return moveToTargetAction(()->{
                 if (getTargetMinusOffset()==target1) return target2; else if (getTargetMinusOffset()==target2) return target1; else return getTargetMinusOffset();
             });
         }
-        public SetTargetAction upwardFSMAction(double...targets){
+        public MoveToTargetAction upwardFSMTargetAction(double...targets){
             Arrays.sort(targets);
-            return setTargetAction(()->{
+            return moveToTargetAction(()->{
                 for (double target: targets){
                     if (getTargetMinusOffset()<target){
                         return target;
@@ -360,9 +360,9 @@ public abstract class Components {
                 return getTargetMinusOffset();
             });
         }
-        public SetTargetAction downwardFSMAction(double...targets){
+        public MoveToTargetAction downwardFSMTargetAction(double...targets){
             Arrays.sort(targets);
-            return setTargetAction(()->{
+            return moveToTargetAction(()->{
                 for (int i = targets.length-1; i>=0; i--){
                     if (getTargetMinusOffset()>targets[i]){
                         return targets[i];
@@ -377,26 +377,26 @@ public abstract class Components {
         public SetOffsetAction setOffsetAction(ReturningFunc<Double> offsetFunc){
             return new SetOffsetAction(offsetFunc);
         }
-        public PressTrigger triggeredSetTargetAction(Condition condition, double target){
-            return new PressTrigger(new IfThen(condition, new SetTargetAction(target)));
+        public PressTrigger triggeredMoveToTargetAction(Condition condition, double target){
+            return new PressTrigger(new IfThen(condition, new MoveToTargetAction(target)));
         }
-        public PressTrigger triggeredSetTargetAction(Condition condition, ReturningFunc<Double> targetFunc) {
-            return new PressTrigger(new IfThen(condition, setTargetAction(targetFunc)));
+        public PressTrigger triggeredMoveToTargetAction(Condition condition, ReturningFunc<Double> targetFunc) {
+            return new PressTrigger(new IfThen(condition, moveToTargetAction(targetFunc)));
         }
-        public PressTrigger triggeredSetTargetAction(Condition condition, double target, double timeout){
-                return new PressTrigger(new IfThen(condition, setTargetAction(target,timeout)));
+        public PressTrigger triggeredMoveToTargetAction(Condition condition, double target, double timeout){
+                return new PressTrigger(new IfThen(condition, moveToTargetAction(target,timeout)));
         }
-        public PressTrigger triggeredSetTargetAction(Condition condition, ReturningFunc<Double> targetFunc, double timeout){
-                return new PressTrigger(new IfThen(condition, setTargetAction(targetFunc,timeout)));
+        public PressTrigger triggeredMoveToTargetAction(Condition condition, ReturningFunc<Double> targetFunc, double timeout){
+                return new PressTrigger(new IfThen(condition, moveToTargetAction(targetFunc,timeout)));
         }
-        public PressTrigger triggeredToggleAction(Condition condition, double target1, double target2){
-            return new PressTrigger(new IfThen(condition, toggleAction(target1,target2)));
+        public PressTrigger triggeredToggleTargetAction(Condition condition, double target1, double target2){
+            return new PressTrigger(new IfThen(condition, toggleTargetAction(target1,target2)));
         }
-        public ConditionalAction triggeredDynamicAction(Condition upCondition, Condition downCondition, double change){
-            return new ConditionalAction(new IfThen(upCondition, setTargetAction(()->(getTargetMinusOffset()+change))),new IfThen(downCondition, setTargetAction(()->(getTargetMinusOffset()-change))));
+        public ConditionalAction triggeredDynamicTargetAction(Condition upCondition, Condition downCondition, double change){
+            return new ConditionalAction(new IfThen(upCondition, moveToTargetAction(()->(getTargetMinusOffset()+change))),new IfThen(downCondition, moveToTargetAction(()->(getTargetMinusOffset()-change))));
         }
-        public PressTrigger triggeredFSMAction(Condition upCondition, Condition downCondition, double...targets){
-            return new PressTrigger(new IfThen(upCondition, upwardFSMAction(targets)),new IfThen(downCondition, downwardFSMAction(targets)));
+        public PressTrigger triggeredFSMTargetAction(Condition upCondition, Condition downCondition, double...targets){
+            return new PressTrigger(new IfThen(upCondition, upwardFSMTargetAction(targets)),new IfThen(downCondition, downwardFSMTargetAction(targets)));
         }
         public PressTrigger triggeredSetOffsetAction(Condition condition, double offset){
             return new PressTrigger(new IfThen(condition, new SetOffsetAction(offset)));
