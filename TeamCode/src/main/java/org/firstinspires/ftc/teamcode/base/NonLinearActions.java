@@ -78,7 +78,6 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         ArrayList<Procedure> scheduledAdditions = new ArrayList<>();
         default void addAction(K key, NonLinearAction action) { //Method that schedules the adding of an action for the end of the loop (required to avoid concurrent modifications)
             action.registerRemoveFromGroup(() -> this.removeAction(key));
-            action.reset();
             scheduledAdditions.add(()->addActionProcedure(key, action));
         }
 
