@@ -2,7 +2,6 @@ package org.firstinspires.ftc.teamcode.base.presets;
 
 import static org.firstinspires.ftc.teamcode.base.Components.timer;
 
-import org.firstinspires.ftc.teamcode.base.Components;
 import org.firstinspires.ftc.teamcode.base.Components.Actuator;
 import org.firstinspires.ftc.teamcode.base.Components.BotServo;
 import org.firstinspires.ftc.teamcode.base.Components.ControlFunction;
@@ -41,8 +40,18 @@ public abstract class PresetControl { //Holds control functions that actuators c
         private double prevLoopTime;
         private double integralIntervalTime;
         private final ArrayList<PIDFConstants> constants;
+        private ReturningFunc<Integer> shouldApplyDerivative = ()->(1);
         public PIDF(PIDFConstants...constants){ //The PIDF can accept multiple sets of coefficients, since if two synchronized CR components have different loads, they will need to produce different power outputs
             this.constants=new ArrayList<>(Arrays.asList(constants));
+        }
+        public PIDF(TrapezoidalMotionProfile<?> profile, PIDFConstants...constants){
+            this(constants);
+            shouldApplyDerivative=()->{
+                if (profile.getPhase().equals("IDLE") || profile.getPhase().equals("OFF") || profile.getPhase().equals("DECEL")){
+                    return 1;
+                }
+                else{return 0;}
+            };
         }
         @Override
         public void registerToParent(E actuator){
@@ -73,7 +82,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
                 parentActuator.setPower(
                         constants.get(i).kP * (parentActuator.getInstantTarget()-currentPosition) +
                                 constants.get(i).kI * integralSums[i] * (timer.time()-prevLoopTime) +
-                                constants.get(i).kD * ((parentActuator.getInstantTarget()-currentPosition)-previousErrors[i])/(timer.time()-prevLoopTime) +
+                                constants.get(i).kD * shouldApplyDerivative.call() * ((parentActuator.getInstantTarget() - currentPosition) - previousErrors[i])/(timer.time()-prevLoopTime) +
                                 constants.get(i).kF * constants.get(i).feedForwardFunc.call(),
                         parentActuator.partNames[i]
                 );
@@ -89,7 +98,6 @@ public abstract class PresetControl { //Holds control functions that actuators c
     public static class TrapezoidalMotionProfile<E extends Actuator<?>> extends ControlFunction<E>{
         private boolean newParams=true;
         private boolean resetting=true;
-        private double firstResetPosition;
         private double currentMaxVelocity;
         private double currentAcceleration;
         private double currentDeceleration;
@@ -104,7 +112,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
         private double profileStartTime;
         private double profileStartPos;
         private double startVelocity;
-        private boolean forceStartVelocityZero=false;
+        private double targetVelocity;
         private String phase="IDLE";
         public TrapezoidalMotionProfile(double maxVelocity, double acceleration){
             this.MAX_VELOCITY=maxVelocity;
@@ -121,15 +129,11 @@ public abstract class PresetControl { //Holds control functions that actuators c
                 if (parentActuator.isNewTarget()){
                     parentActuator.setInstantTarget(parentActuator.getCurrentPosition());
                 }
-                if (isStart()){
-                    forceStartVelocityZero=true;
-                }
                 newParams=false;
                 resetting=true;
                 profileStartTime=timer.time();
-                firstResetPosition=parentActuator.getCurrentPosition();
             }
-            //When the profile needs to be reset, it will reset not in the current, but in the next loop iteration to allow for velocity calculation and avoid an issue with loop-time discrepancies
+            //When the profile needs to be reset, it will reset not in the current, but in the next loop iteration to avoid an issue with loop-time discrepancies
             else if (resetting){
                 resetting=false;
                 createMotionProfile();
@@ -143,18 +147,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
             profileStartPos=parentActuator.getCurrentPosition();
             double distance = parentActuator.getTarget() - profileStartPos;
             if (distance!=0) {
-                if (!forceStartVelocityZero){
-                    if (parentActuator instanceof Components.BotMotor) {
-                        startVelocity = ((Components.BotMotor) parentActuator).getVelocity();
-                    } else {
-                        startVelocity = (profileStartPos - firstResetPosition) / (timer.time() - profileStartTime);
-                    }
-                }
-                else{
-                    startVelocity=0;
-                    forceStartVelocityZero=false;
-                }
-                //If the actuator is a motor, we can use getVelocity to find the velocity at the start of the profile. Otherwise we calculate it manually
+                startVelocity=targetVelocity;
                 currentMaxVelocity = MAX_VELOCITY * Math.signum(distance);
                 currentAcceleration = ACCELERATION * Math.signum(currentMaxVelocity - startVelocity);
                 currentDeceleration = -ACCELERATION * Math.signum(distance);
@@ -201,26 +194,30 @@ public abstract class PresetControl { //Holds control functions that actuators c
             double elapsedTime = timer.time()-profileStartTime;
             if (elapsedTime < accelDT){
                 phase="ACCEL";
+                targetVelocity = startVelocity + currentAcceleration * elapsedTime;
                 return profileStartPos + startVelocity * elapsedTime + 0.5 * currentAcceleration * elapsedTime*elapsedTime;
             }
             else if (elapsedTime < accelDT+cruiseDT){
                 phase="CRUISE";
                 double cruiseCurrentDT = elapsedTime - accelDT;
+                targetVelocity = currentMaxVelocity;
                 return profileStartPos + accelDistance + currentMaxVelocity * cruiseCurrentDT;
             }
             else if (elapsedTime < accelDT+cruiseDT+decelDT){
                 phase="DECEL";
                 double decelCurrentDT = elapsedTime - accelDT - cruiseDT;
+                targetVelocity = currentMaxVelocity + currentDeceleration * decelCurrentDT;
                 return profileStartPos + accelDistance + cruiseDistance + currentMaxVelocity * decelCurrentDT + 0.5 * currentDeceleration * decelCurrentDT*decelCurrentDT;
             }
             else{
                 phase="IDLE";
+                targetVelocity=0;
                 return parentActuator.getTarget();
             }
         }
         @Override
         public void stopProcedure() {
-            phase="OFF";
+            phase="OFF"; targetVelocity=0;
         }
         public HashMap<String,Double> getProfileData(){
             HashMap<String,Double> data = new HashMap<>();
@@ -231,7 +228,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
             data.put("accelDT",accelDT);
             data.put("cruiseDT",cruiseDT);
             data.put("decelDT",decelDT);
-
+            data.put("targetVelocity",targetVelocity);
             return data;
         }
         public String getPhase(){

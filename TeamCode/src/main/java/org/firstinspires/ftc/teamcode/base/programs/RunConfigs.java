@@ -22,7 +22,7 @@ public abstract class RunConfigs {
             testServo=new BotServo(
                     "test", new String[]{"test"},
                     ()->(180.0),()->(0.0),
-                    700, 2,new String[]{},new double[]{},
+                    700, 2,
                     new Servo.Direction[]{Servo.Direction.FORWARD},
                     180,
                     0
@@ -31,7 +31,7 @@ public abstract class RunConfigs {
             testMotor=new Components.BotMotor(
                     "motor", new String[]{"intake"},
                     ()->(1500.0),()->(0.0),
-                    20,3,new String[]{},new double[]{},
+                    20,3,
                     new DcMotor.Direction[]{DcMotor.Direction.FORWARD},
                     new String[]{"MotionProfile","PID"},
                     Arrays.asList(new PresetControl.TrapezoidalMotionProfile<>(10000,5000),new PresetControl.PIDF<>(new PresetControl.PIDF.PIDFConstants(0.015, 0, 0))),
