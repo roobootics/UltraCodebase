@@ -129,8 +129,8 @@ public abstract class PresetControl { //Holds control functions that actuators c
                     parentActuator.setInstantTarget(parentActuator.getCurrentPosition());
                 }
                 newParams=false;
-                profileStartTime=timer.time();
                 createMotionProfile();
+                profileStartTime=timer.time();
             }
             else{
                 parentActuator.setInstantTarget(runMotionProfileOnce());
