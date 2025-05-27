@@ -97,7 +97,6 @@ public abstract class PresetControl { //Holds control functions that actuators c
     }
     public static class TrapezoidalMotionProfile<E extends Actuator<?>> extends ControlFunction<E>{
         private boolean newParams=true;
-        private boolean resetting=true;
         private double currentMaxVelocity;
         private double currentAcceleration;
         private double currentDeceleration;
@@ -125,19 +124,13 @@ public abstract class PresetControl { //Holds control functions that actuators c
         }
         @Override
         protected void runProcedure() {
-            if (parentActuator.isNewTarget()||newParams||isStart()){
+            if (parentActuator.isNewTarget()||newParams||isStart()){ //When the profile needs to be reset, it will reset not in the current, but in the next loop iteration to avoid an issue with loop-time discrepancies
                 if (parentActuator.isNewTarget()){
                     parentActuator.setInstantTarget(parentActuator.getCurrentPosition());
                 }
                 newParams=false;
-                resetting=true;
                 profileStartTime=timer.time();
-            }
-            //When the profile needs to be reset, it will reset not in the current, but in the next loop iteration to avoid an issue with loop-time discrepancies
-            else if (resetting){
-                resetting=false;
                 createMotionProfile();
-                parentActuator.setInstantTarget(runMotionProfileOnce());
             }
             else{
                 parentActuator.setInstantTarget(runMotionProfileOnce());
