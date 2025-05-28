@@ -124,6 +124,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
         }
         @Override
         protected void runProcedure() {
+            parentActuator.setInstantTarget(runMotionProfileOnce());
             if (parentActuator.isNewTarget()||newParams||isStart()){ //When the profile needs to be reset, it will reset not in the current, but in the next loop iteration to avoid an issue with loop-time discrepancies
                 if (parentActuator.isNewTarget()){
                     parentActuator.setInstantTarget(parentActuator.getCurrentPosition());
@@ -131,9 +132,6 @@ public abstract class PresetControl { //Holds control functions that actuators c
                 newParams=false;
                 createMotionProfile();
                 profileStartTime=timer.time();
-            }
-            else{
-                parentActuator.setInstantTarget(runMotionProfileOnce());
             }
         }
         public void createMotionProfile(){
