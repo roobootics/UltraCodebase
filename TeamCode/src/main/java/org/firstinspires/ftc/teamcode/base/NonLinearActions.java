@@ -512,7 +512,9 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 }
             } else return false;
         }
-
+        public NonLinearAction getCurrentAction(){
+            return currentAction;
+        }
         @Override
         public void addActionProcedure(ReturningFunc<Boolean> key, NonLinearAction action) {
             actions.put(key,action);
@@ -564,6 +566,9 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                     return true;
                 }
             } else return false;
+        }
+        public NonLinearAction getCurrentAction(){
+            return currentAction;
         }
         @Override
         public void addActionProcedure(ReturningFunc<Boolean> key, NonLinearAction action) {
@@ -622,6 +627,9 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                     return true;
                 }
             } else return false;
+        }
+        public NonLinearAction getCurrentAction(){
+            return currentAction;
         }
         @Override
         public void addActionProcedure(ReturningFunc<Boolean> key, NonLinearAction action) {

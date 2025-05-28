@@ -47,7 +47,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
         public PIDF(TrapezoidalMotionProfile<?> profile, PIDFConstants...constants){
             this(constants);
             shouldApplyDerivative=()->{
-                if (profile.getPhase().equals("IDLE") || profile.getPhase().equals("OFF") || profile.getPhase().equals("DECEL")){
+                if (profile.getPhase().equals(TrapezoidalMotionProfile.Phase.IDLE) || profile.getPhase().equals(TrapezoidalMotionProfile.Phase.OFF) || profile.getPhase().equals(TrapezoidalMotionProfile.Phase.DECEL)){
                     return 1;
                 }
                 else{return 0;}
@@ -96,6 +96,13 @@ public abstract class PresetControl { //Holds control functions that actuators c
         }
     }
     public static class TrapezoidalMotionProfile<E extends Actuator<?>> extends ControlFunction<E>{
+        public enum Phase{
+            ACCEL,
+            CRUISE,
+            DECEL,
+            IDLE,
+            OFF
+        }
         private boolean newParams=true;
         private double currentMaxVelocity;
         private double currentAcceleration;
@@ -112,7 +119,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
         private double profileStartPos;
         private double startVelocity;
         private double targetVelocity;
-        private String phase="IDLE";
+        private Phase phase = Phase.IDLE;
         public TrapezoidalMotionProfile(double maxVelocity, double acceleration){
             this.MAX_VELOCITY=maxVelocity;
             this.ACCELERATION=acceleration;
@@ -184,31 +191,31 @@ public abstract class PresetControl { //Holds control functions that actuators c
         public double runMotionProfileOnce(){
             double elapsedTime = timer.time()-profileStartTime;
             if (elapsedTime < accelDT){
-                phase="ACCEL";
+                phase=Phase.ACCEL;
                 targetVelocity = startVelocity + currentAcceleration * elapsedTime;
                 return profileStartPos + startVelocity * elapsedTime + 0.5 * currentAcceleration * elapsedTime*elapsedTime;
             }
             else if (elapsedTime < accelDT+cruiseDT){
-                phase="CRUISE";
+                phase=Phase.CRUISE;
                 double cruiseCurrentDT = elapsedTime - accelDT;
                 targetVelocity = currentMaxVelocity;
                 return profileStartPos + accelDistance + currentMaxVelocity * cruiseCurrentDT;
             }
             else if (elapsedTime < accelDT+cruiseDT+decelDT){
-                phase="DECEL";
+                phase=Phase.DECEL;
                 double decelCurrentDT = elapsedTime - accelDT - cruiseDT;
                 targetVelocity = currentMaxVelocity + currentDeceleration * decelCurrentDT;
                 return profileStartPos + accelDistance + cruiseDistance + currentMaxVelocity * decelCurrentDT + 0.5 * currentDeceleration * decelCurrentDT*decelCurrentDT;
             }
             else{
-                phase="IDLE";
+                phase=Phase.IDLE;
                 targetVelocity=0;
                 return parentActuator.getTarget();
             }
         }
         @Override
         public void stopProcedure() {
-            phase="OFF"; targetVelocity=0;
+            phase=Phase.OFF; targetVelocity=0;
         }
         public HashMap<String,Double> getProfileData(){
             HashMap<String,Double> data = new HashMap<>();
@@ -222,7 +229,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
             data.put("targetVelocity",targetVelocity);
             return data;
         }
-        public String getPhase(){
+        public Phase getPhase(){
             return phase;
         }
     }
