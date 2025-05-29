@@ -24,6 +24,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Target;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -133,6 +134,7 @@ public abstract class Components {
         protected Function<Double,Double> positionConversionInverse = (Double pos)->(pos);
         private boolean timeBasedLocalization = false; //Indicates whether the getCurrentPosition method of the actuator calculates the position based on time as opposed to an encoder, which is important to know.
         private boolean dynamicTargetBoundaries = false; //Indicates whether the max and min targets can change for a specific actuator. Useful to know if they don't
+        private boolean isBroken = false; //Flag for whether the actuator is broken or not
         public class ControlFuncRegister<T extends Actuator<E>>{ //Registers control functions. Parametrized to the subclass of Actuator that is using it. The functions cannot be stored directly in the actuator because of generic type erasure and generic invariance. This approach is cleaner
             private final HashMap<String, List<ControlFunction<T>>> controlFuncsMap = new HashMap<>(); //Map with lists of control functions paired with names.
             @SafeVarargs
@@ -297,12 +299,30 @@ public abstract class Components {
                 keyPositions.put(keyPositionKeys[i],keyPositionValues[i]);
             }
         }
+        public E getPart(String partName){
+            return Objects.requireNonNull(this.parts.get(partName));
+        }
+        public Collection<E> getParts(){
+            return this.parts.values();
+        }
+        public String[] getPartNames(){
+            return this.partNames;
+        }
+        public void setAsBroken(){
+            this.isBroken=true;
+        }
+        public void setAsUnbroken(){
+            this.isBroken=false;
+        }
+        public boolean isBroken(){
+            return this.isBroken;
+        }
         public class MoveToTargetAction extends CompoundAction { //Action to set the target, then wait until the position of the actuator is a certain distance from the target, or until a set timeout
             public MoveToTargetAction(ReturningFunc<Double> targetFunc, double timeout){
                 group = new NonLinearSequentialAction(
                         new InstantAction(()-> setTarget(targetFunc.call())),
                         new SleepUntilTrue(
-                                ()->(Math.abs(getCurrentPosition()-target)<errorTol),
+                                ()->(isBroken||Math.abs(getCurrentPosition()-target)<errorTol),
                                 timeout
                         )
                 );
@@ -634,6 +654,11 @@ public abstract class Components {
         }
         public boolean isStallResetting(){
             return isStallResetting;
+        }
+        public void setMode(DcMotorEx.RunMode mode){
+            for (DcMotorEx part: parts.values()){
+                part.setMode(mode);
+            }
         }
         public class StallResetAction extends NonLinearAction { //Stall resets encoders, and offsets the position if you want to reset at a non-zero position.
             double resetPosition;
