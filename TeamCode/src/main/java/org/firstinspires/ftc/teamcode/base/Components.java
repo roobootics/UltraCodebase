@@ -66,6 +66,19 @@ public abstract class Components {
     }
     public static final ElapsedTime timer = new ElapsedTime(); //Central timer used by everything (e.g. sleep action, motion profile)
     public static final HashMap<String,Actuator<?>> actuators = new HashMap<>(); //Map of all actuators, each accessible through its name
+    public void activateActuatorControl(){
+        for (Actuator<?> actuator: actuators.values()){
+            actuator.switchControl(actuator.getDefaultControlKey());
+        }
+    }
+    public void resetMotorEncoders(){
+        for (Actuator<?> actuator: actuators.values()){
+            if (actuator instanceof BotMotor){
+                BotMotor castedActuator=(BotMotor) actuator;
+                castedActuator.resetEncoders();
+            }
+        }
+    }
     @Target(ElementType.METHOD)
     public @interface Actuate{} //Used to denote methods that actually move a part, like setPower or setPosition
     public abstract static class PartsConfig{ //Classes overriding PartsConfig will have static fields that hold all the actuators for a build. Similar to Mr. Nayal's JSON files that held the components and data on each component of a build.
