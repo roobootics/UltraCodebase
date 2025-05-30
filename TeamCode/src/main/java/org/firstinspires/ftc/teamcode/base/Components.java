@@ -80,6 +80,37 @@ public abstract class Components {
             }
         }
     }
+    public static class CachedReader<E>{
+        //Allows for the optimized reading of values. The return of a read is cached and re-returned every time the read is called, until the cache is cleared so fresh values can be obtained.
+        private static final ArrayList<CachedReader<?>> readers = new ArrayList<>();
+        private final ReturningFunc<E> read;
+        private int resetCacheCounter = 0;
+        private final int resetLoopInterval;
+        private E storedReadValue = null;
+        public CachedReader(ReturningFunc<E> read, int resetLoopInterval){
+            this.read=read;
+            this.resetLoopInterval=resetLoopInterval;
+            readers.add(this);
+        }
+        public E cachedRead(){
+            if (Objects.nonNull(storedReadValue)){
+                storedReadValue=read.call();
+            }
+            return storedReadValue;
+        }
+        public void resetCache(){
+            resetCacheCounter=0;
+            storedReadValue=null;
+        }
+        protected static void resetAllCaches(){
+            for (CachedReader<?> reader : readers){
+                reader.resetCacheCounter+=1;
+                if (reader.resetCacheCounter>= reader.resetLoopInterval){
+                    reader.resetCache();
+                }
+            }
+        }
+    }
     @Target(ElementType.METHOD)
     public @interface Actuate{} //Used to denote methods that actually move a part, like setPower or setPosition
     public abstract static class PartsConfig{ //Classes overriding PartsConfig will have static fields that hold all the actuators for a build. Similar to Mr. Nayal's JSON files that held the components and data on each component of a build.
@@ -126,7 +157,7 @@ public abstract class Components {
         private boolean targetStateUnlocked = true; //If set to false, the actuator's target cannot change.
         private final HashMap<String,Double> keyPositions = new HashMap<>(); //Stores key positions, like 'transferPosition,' etc.
         private final HashMap<String,ReturningFunc<Double>> getCurrentPositions = new HashMap<>(); //Map of methods to get the current positions of each of the actuator's parts. (They may have slightly different positions each)
-        private final HashMap<String,Double> currentPositions = new HashMap<>(); //For optimization, an actuator's current position can only be calculated once a loop. If you call it more than once, the output from the first call is stored and given again
+        private final LambdaInterfaces.Procedure resetCurrentPositionCaches;
         protected ControlFuncRegister<?> funcRegister;
         private String currControlFuncKey;
         private String defaultControlKey;
@@ -170,11 +201,18 @@ public abstract class Components {
             this.minTargetFunc = ()->(minTargetFunc.call()+offset);
             this.defaultMovementTimeout = defaultMovementTimeout;
             this.errorTol=errorTol;
+            ArrayList<CachedReader<Double>> readers = new ArrayList<>();
             for (String name:partNames){
                 this.parts.put(name,Components.hardwareMap.get(type,name)); //Can't do E.class instead of using the parameter 'type' because of generic type erasure
-                this.getCurrentPositions.put(name,()->(positionConversion.apply(getCurrentPosition.apply(parts.get(name))))); //The getCurrentPosition function is copied, one for each of the actuator's parts. Position conversion is also applied
-                this.currentPositions.put(name,Double.NaN);
+                CachedReader<Double> reader = new CachedReader<>(()->(positionConversion.apply(getCurrentPosition.apply(parts.get(name)))),1);
+                readers.add(reader);
+                this.getCurrentPositions.put(name,reader::cachedRead); //The getCurrentPosition function is copied, one for each of the actuator's parts. Position conversion is also applied
             }
+            resetCurrentPositionCaches = ()->{
+                for (CachedReader<Double> reader:readers){
+                    reader.resetCache();
+                }
+            };
             actuators.put(name,this);
         }
         public String getName(){
@@ -241,14 +279,7 @@ public abstract class Components {
             return instantTarget;
         }
         public double getCurrentPosition(String name){ //Gets the position of a specific part
-            if (Double.isNaN(Objects.requireNonNull(currentPositions.get(name)))){
-                double pos = Objects.requireNonNull(getCurrentPositions.get(name)).call();
-                currentPositions.put(name,pos);
-                return pos;
-            }
-            else{
-                return Objects.requireNonNull(currentPositions.get(name));
-            }
+            return Objects.requireNonNull(getCurrentPositions.get(name)).call();
         }
         public double getCurrentPosition(){ //Gets the avg position of all synchronized parts
             double avg = 0;
@@ -291,8 +322,8 @@ public abstract class Components {
         public void unlockTargetState(){
             targetStateUnlocked=true;
         }
-        public void resetCurrentPositions(){
-            currentPositions.replaceAll((k, v) -> Double.NaN);
+        protected void resetCurrentPositions(){
+            resetCurrentPositionCaches.call();
         }
         public void setKeyPositions(String[] keyPositionKeys, double[] keyPositionValues){
             for (int i=0; i<keyPositionKeys.length; i++){

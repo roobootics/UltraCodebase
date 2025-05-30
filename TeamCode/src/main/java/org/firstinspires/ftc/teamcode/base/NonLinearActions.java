@@ -1207,9 +1207,9 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                     castedActuator.setPower(castedActuator.getPower(castedActuator.partNames[0]));
                 }
                 actuator.runControl();
-                actuator.resetCurrentPositions();
                 actuator.resetNewTarget();
             }
+            Components.CachedReader.resetAllCaches();
             updateTelemetry();
         }
         public void runLoop(Condition condition){
