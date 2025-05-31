@@ -16,8 +16,16 @@ public class tets extends LinearOpMode {
         testMotor.resetEncoders();
         waitForStart();
         NonLinearActions.ParallelActionExecutor executor = new NonLinearActions.ParallelActionExecutor(
-                new NonLinearActions.RunResettingLoop(
-                       testMotor.triggeredToggleAction(()->(gamepad1.a),0,1500)
+                new NonLinearActions.ResetAndLoopForDuration(
+                        10,
+                       NonLinearActions.triggeredFSMAction(
+                               ()->(gamepad1.right_bumper),
+                               ()->(gamepad1.left_bumper),
+                               2,
+                               testMotor.moveToTargetAction(50),
+                               testMotor.moveToTargetAction(200),
+                               testMotor.moveToTargetAction(500)
+                       )
                 ),
                 new NonLinearActions.PowerOnCommand(),
                 new NonLinearActions.WriteToTelemetry(

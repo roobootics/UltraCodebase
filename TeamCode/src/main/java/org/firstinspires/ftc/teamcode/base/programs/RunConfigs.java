@@ -28,14 +28,15 @@ public abstract class RunConfigs {
                     0
             );
             testServo.setOffsetBoundFuncs(()->(180.0),()->(0.0));
+            PresetControl.TrapezoidalMotionProfile<Components.BotMotor> profile = new PresetControl.TrapezoidalMotionProfile<>(10000,5000);
             testMotor=new Components.BotMotor(
                     "motor", new String[]{"intake"},
                     ()->(1500.0),()->(0.0),
                     20,3,
                     new DcMotor.Direction[]{DcMotor.Direction.FORWARD},
                     new String[]{"MotionProfile","PID"},
-                    Arrays.asList(new PresetControl.TrapezoidalMotionProfile<>(10000,5000),new PresetControl.PIDF<>(new PresetControl.PIDF.PIDFConstants(0.015, 0, 0))),
-                    List.of(new PresetControl.PIDF<>(new PresetControl.PIDF.PIDFConstants(0.015, 0, 0)))
+                    Arrays.asList(profile,new PresetControl.PIDF<>(profile,new PresetControl.PIDF.PIDFConstants(0.015, 0, 0))),
+                    List.of(new PresetControl.PIDF<>(profile,new PresetControl.PIDF.PIDFConstants(0.015, 0, 0)))
             );
         }
     }
