@@ -82,7 +82,7 @@ public abstract class Components {
     }
     public static class CachedReader<E>{
         //Allows for the optimized reading of values. The return of a read is cached and re-returned every time the read is called, until the cache is cleared so fresh values can be obtained.
-        private static final ArrayList<CachedReader<?>> readers = new ArrayList<>();
+        private static final ArrayList<CachedReader<?>> readers = new ArrayList<>(); //Contains all instances
         private final ReturningFunc<E> read;
         private int resetCacheCounter = 0;
         private final int resetCacheLoopInterval; //If this is set to n, the cache is reset every nth iteration.
@@ -119,6 +119,7 @@ public abstract class Components {
             Components.hardwareMap=hardwareMap;
             Components.telemetry=telemetry;
             timer.reset(); //Static variables are preserved between runs, so timer needs to be reset
+            actuators.clear(); //Static variables are preserved between runs, so its better for actuators to be cleared
         }
     }
     public abstract static class ControlFunction<E extends Actuator<?>>{ //The subclasses of this are methods that are called to control actuators and get them to the target, such as PID or motion profiles. Each function works with a specific type of actuator. Multiple can run at once
