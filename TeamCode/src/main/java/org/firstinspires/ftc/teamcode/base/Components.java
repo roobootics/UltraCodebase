@@ -543,6 +543,7 @@ public abstract class Components {
                     part.setPower(power);
                     powers.put(name,power);
                     if (getTimeBasedLocalization()){ //If current position is calculated by time, it needs to be updated everytime the actuator moves
+                        resetCurrentPositions();
                         getCurrentPosition(name);
                     }
                     setNewActuation();
@@ -559,6 +560,7 @@ public abstract class Components {
                         Objects.requireNonNull(parts.get(name)).setPower(power);
                     }
                     if (getTimeBasedLocalization()){
+                        resetCurrentPositions();
                         getCurrentPosition();
                     }
                     setNewActuation();
