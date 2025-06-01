@@ -145,6 +145,7 @@ public abstract class Components {
         private double target;
         private double instantTarget;
         private boolean newTarget=false; //Set to true when setTarget is called. Set to false after the end of each loop.
+        private boolean newActuation=false; //Set to true when a method tagged with @Actuator is called. Set to false after the end of each loop.
         private double offset; //In case a part skips or something, this allows us to offset all the targets we set to compensate
         public final ReturningFunc<Double> maxTargetFunc;
         public final ReturningFunc<Double> minTargetFunc;
@@ -256,6 +257,15 @@ public abstract class Components {
         }
         public void resetNewTarget(){
             newTarget=false;
+        }
+        public boolean isNewActuation(){
+            return newActuation;
+        }
+        public void resetNewActuation(){
+            newActuation=false;
+        }
+        public void setNewActuation(){
+            newActuation=true;
         }
         public void setTarget(double target){
             if (targetStateUnlocked){
@@ -535,6 +545,7 @@ public abstract class Components {
                     if (getTimeBasedLocalization()){ //If current position is calculated by time, it needs to be updated everytime the actuator moves
                         getCurrentPosition(name);
                     }
+                    setNewActuation();
                 }
             }
         }
@@ -550,6 +561,7 @@ public abstract class Components {
                     if (getTimeBasedLocalization()){
                         getCurrentPosition();
                     }
+                    setNewActuation();
                 }
             }
         }
@@ -762,6 +774,7 @@ public abstract class Components {
                     resetCurrentPositions();
                     getCurrentPosition();
                 }
+                setNewActuation();
             }
         }
         public double getPosition(){
