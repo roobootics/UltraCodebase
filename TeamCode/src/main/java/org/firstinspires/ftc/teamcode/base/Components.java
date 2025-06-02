@@ -751,6 +751,7 @@ public abstract class Components {
     }
     public static class BotServo extends Actuator<Servo>{
         private double currCommandedPos;
+        private boolean ignoreSetPosCaching = false;
         @SafeVarargs
         public BotServo(String name, String[] names, Function<Servo, Double> getCurrentPosition, int currentPosPollingInterval, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, double errorTol, double defaultTimeout, Servo.Direction[] directions, double range, double initialTarget, String[] controlFuncKeys, List<ControlFunction<BotServo>>... controlFuncs) {
             super(name, Servo.class, names, getCurrentPosition, currentPosPollingInterval, maxTargetFunc, minTargetFunc, errorTol, defaultTimeout);
@@ -769,7 +770,7 @@ public abstract class Components {
         @Actuate
         public void setPosition(double position){
             position=Math.max(minTargetFunc.call(),Math.min(position, maxTargetFunc.call()));
-            if (actuationStateUnlocked && Math.abs(currCommandedPos-position)>0.05){
+            if (actuationStateUnlocked && (Math.abs(currCommandedPos-position)>0.05||ignoreSetPosCaching)){
                 currCommandedPos=position;
                 for (Servo part:parts.values()){part.setPosition(positionConversionInverse.apply(position));}
                 if (getTimeBasedLocalization()){
@@ -781,6 +782,15 @@ public abstract class Components {
         }
         public double getPosition(){
             return currCommandedPos;
+        }
+        public boolean isIgnoreSetPosCaching(){
+            return ignoreSetPosCaching;
+        }
+        public void setIgnoreSetPosCaching(boolean bool){
+            ignoreSetPosCaching=bool;
+        }
+        public InstantAction toggleIgnoreSetPosCaching(){
+            return new InstantAction(()->setIgnoreSetPosCaching(!isIgnoreSetPosCaching()));
         }
     }
     public static class CRBotServo extends CRActuator<CRServo>{
