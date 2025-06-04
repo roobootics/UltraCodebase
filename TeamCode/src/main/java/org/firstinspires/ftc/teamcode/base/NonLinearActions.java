@@ -209,6 +209,25 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
 
     //PRELOADED ACTIONS
+    public static class ActionHolder extends NonLinearAction{
+        private NonLinearAction action;
+        @Override
+        boolean runProcedure() {
+            return action.run();
+        }
+        @Override
+        public void stopProcedure(){
+            action.stop();
+        }
+        public void setAction(NonLinearAction action){
+            this.action.stop();
+            action.reset();
+            this.action=action;
+        }
+        public NonLinearAction getAction(){
+            return this.action;
+        }
+    }
     public static class WriteToTelemetry extends ContinuousAction { //This action runs each actuator's control functions and updates the telemetry using the updateTelemetry function it is provided
         public WriteToTelemetry(Procedure updateTelemetry) {
             super(updateTelemetry);
