@@ -209,8 +209,13 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
 
     //PRELOADED ACTIONS
-    public static class ActionHolder extends NonLinearAction{
-        private NonLinearAction action;
+    public static class ActionHolder extends NonLinearAction{ //An action that can run a given action when run. The action it runs can be changed.
+        //The idea behind this is that you can build sequences using an ActionHolder, and change the action inside the ActionHolder later on without having to rebuild the entire sequence again.
+        private NonLinearAction action = null;
+        public ActionHolder(NonLinearAction initialAction){
+            setAction(initialAction);
+        }
+        public ActionHolder(){}
         @Override
         boolean runProcedure() {
             return action.run();
