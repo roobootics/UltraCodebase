@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public abstract class NonLinearActions { //Command-based (or action-based) system
+    public static final ParallelActionExecutor executor=new ParallelActionExecutor(); //This runs NonLinearActions
     public abstract static class NonLinearAction { //Base class for any action
         private boolean isBusy = false; //Indicates whether the action is active or not
         private boolean isStart = true; //Actions know if they've just started running or not
@@ -978,7 +979,9 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         private ArrayList<NonLinearAction> actions;
         private final ArrayList<NonLinearAction> actionsToAdd = new ArrayList<>();
         private final ArrayList<NonLinearAction> actionsToRemove = new ArrayList<>();
-        public ParallelActionExecutor(NonLinearAction...commandGroups){
+        private ParallelActionExecutor(){
+        }
+        public void setActions(NonLinearAction...commandGroups){
             this.actions =new ArrayList<>(Arrays.asList(commandGroups));
         }
         public void runOnce(){

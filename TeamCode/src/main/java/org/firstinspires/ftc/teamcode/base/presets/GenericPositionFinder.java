@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.base.presets;
 
 import static org.firstinspires.ftc.teamcode.base.Components.actuators;
+import static org.firstinspires.ftc.teamcode.base.NonLinearActions.executor;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
@@ -54,7 +55,7 @@ public abstract class GenericPositionFinder extends LinearOpMode { //Used to fin
         }
 
         waitForStart();
-        new NonLinearActions.ParallelActionExecutor(
+        executor.setActions(
                 new NonLinearActions.RunResettingLoop(
                         new NonLinearActions.PressTrigger(new NonLinearActions.IfThen(
                                 ()->(gamepad1.dpad_left),
@@ -70,6 +71,7 @@ public abstract class GenericPositionFinder extends LinearOpMode { //Used to fin
                 ),
                 new NonLinearActions.WriteToTelemetry(this::updateTelemetry),
                 new NonLinearActions.PowerOnCommand()
-        ).runLoop(this::opModeIsActive);
+        );
+        executor.runLoop(this::opModeIsActive);
     }
 }

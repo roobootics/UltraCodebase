@@ -20,10 +20,10 @@ public abstract class RunConfigs {
         public static void init(HardwareMap hardwareMap, Telemetry telemetry){
             initialize(hardwareMap, telemetry);
             testServo=new BotServo(
-                    "test", new String[]{"test"},
+                    "test", new String[]{"test","test1"},
                     ()->(180.0),()->(0.0),
                     700, 2,
-                    new Servo.Direction[]{Servo.Direction.FORWARD},
+                    new Servo.Direction[]{Servo.Direction.FORWARD, Servo.Direction.REVERSE},
                     180,
                     0
             );
