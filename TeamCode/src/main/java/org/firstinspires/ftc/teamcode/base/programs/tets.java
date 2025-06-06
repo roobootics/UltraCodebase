@@ -45,7 +45,8 @@ public class tets extends LinearOpMode {
                                         )
                                 )),
                                 new NonLinearActions.InstantAction(holder::removeAction)
-                        )
+                        ),
+                        holder
                 ),
                 new NonLinearActions.PowerOnCommand(),
                 new NonLinearActions.WriteToTelemetry(
