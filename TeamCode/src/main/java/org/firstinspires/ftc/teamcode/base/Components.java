@@ -190,9 +190,6 @@ public abstract class Components {
                     defaultControlKey="controlOff";
                 }
             }
-            public List<ControlFunction<T>> getControlFunc(String key){
-                return controlFuncsMap.get(key);
-            }
         }
         public Actuator(String actuatorName, Class<E> type,
                         String[] partNames, Function<E, Double> getCurrentPosition, int currentPosPollingInterval,
@@ -731,12 +728,11 @@ public abstract class Components {
                     setPower(-0.2);
                 }
                 if (getCurrentAmps()>stallVolts){
-                    for (DcMotorEx part:parts.values()){
-                        part.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-                        part.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-                    }
+                    double pos = getCurrentPosition();
+                    Function<Double,Double> oldPositionConversion = positionConversion;
+                    positionConversion=(Double d)->(oldPositionConversion.apply(d)-pos);
                     setOffset(-resetPosition);
-                    setTarget(resetPosition);
+                    setTarget(0);
                     setPower(0);
                     isStallResetting=false;
                 }

@@ -143,14 +143,14 @@ public abstract class PresetControl { //Holds control functions that actuators c
             parentActuator.setInstantTarget(runMotionProfileOnce());
             if (parentActuator.isNewTarget()||newParams||isStart()){ //When the profile needs to be reset, it will reset not in the current, but in the next loop iteration to avoid an issue with loop-time discrepancies
                 newParams=false;
-                createMotionProfile();
+                createMotionProfile(parentActuator.getTarget(), parentActuator.getCurrentPosition());
                 profileStartTime=timer.time();
             }
         }
-        public void createMotionProfile(){
-            currentTarget = parentActuator.getTarget();
-            profileStartPos=parentActuator.getCurrentPosition();
-            double distance = parentActuator.getTarget() - profileStartPos;
+        public void createMotionProfile(double target, double position){
+            currentTarget = target;
+            profileStartPos=position;
+            double distance = target - profileStartPos;
             if (distance!=0) {
                 startVelocity=targetVelocity;
                 currentMaxVelocity = MAX_VELOCITY * Math.signum(distance);
