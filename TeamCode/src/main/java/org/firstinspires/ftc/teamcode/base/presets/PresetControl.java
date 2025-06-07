@@ -144,7 +144,6 @@ public abstract class PresetControl { //Holds control functions that actuators c
             if (parentActuator.isNewTarget()||newParams||isStart()){ //When the profile needs to be reset, it will reset not in the current, but in the next loop iteration to avoid an issue with loop-time discrepancies
                 newParams=false;
                 createMotionProfile(parentActuator.getTarget(), parentActuator.getCurrentPosition());
-                profileStartTime=timer.time();
             }
         }
         public void createMotionProfile(double target, double position){
@@ -194,6 +193,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
                 cruiseDistance=0;
                 decelDistance=0;
             }
+            profileStartTime=timer.time();
         }
         public double runMotionProfileOnce(){
             double elapsedTime = timer.time()-profileStartTime;
