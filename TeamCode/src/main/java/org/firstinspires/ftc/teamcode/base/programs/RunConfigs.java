@@ -17,6 +17,7 @@ public abstract class RunConfigs {
     public static class TestServo extends PartsConfig {
         public static BotServo testServo;
         public static Components.BotMotor testMotor;
+        public static PresetControl.TrapezoidalMotionProfile<Components.BotMotor> profile;
         public static void init(HardwareMap hardwareMap, Telemetry telemetry){
             initialize(hardwareMap, telemetry);
             testServo=new BotServo(
@@ -28,10 +29,10 @@ public abstract class RunConfigs {
                     0
             );
             testServo.setOffsetBoundFuncs(()->(180.0),()->(0.0));
-            PresetControl.TrapezoidalMotionProfile<Components.BotMotor> profile = new PresetControl.TrapezoidalMotionProfile<>(10000,5000);
+            profile=new PresetControl.TrapezoidalMotionProfile<>(10000,2000);
             testMotor=new Components.BotMotor(
                     "motor", new String[]{"intake"},
-                    ()->(1500.0),()->(0.0),
+                    ()->(Double.POSITIVE_INFINITY),()->(Double.NEGATIVE_INFINITY),
                     20,3,
                     new DcMotor.Direction[]{DcMotor.Direction.FORWARD},
                     new String[]{"MotionProfile","PID"},

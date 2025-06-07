@@ -103,6 +103,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
             IDLE,
             OFF
         }
+        private double currentTarget;
         private boolean newParams=true;
         private double currentMaxVelocity;
         private double currentAcceleration;
@@ -124,6 +125,11 @@ public abstract class PresetControl { //Holds control functions that actuators c
             this.MAX_VELOCITY=maxVelocity;
             this.ACCELERATION=acceleration;
         }
+        @Override
+        public void registerToParent(E actuator){
+            super.registerToParent(actuator);
+            currentTarget=actuator.getTarget();
+        }
         public void setNewParams(double maxVelocity, double acceleration){
             this.MAX_VELOCITY=maxVelocity;
             this.ACCELERATION=acceleration;
@@ -131,17 +137,18 @@ public abstract class PresetControl { //Holds control functions that actuators c
         }
         @Override
         protected void runProcedure() {
+            if (parentActuator.isNewTarget()){
+                parentActuator.setInstantTarget(parentActuator.getCurrentPosition());
+            }
             parentActuator.setInstantTarget(runMotionProfileOnce());
             if (parentActuator.isNewTarget()||newParams||isStart()){ //When the profile needs to be reset, it will reset not in the current, but in the next loop iteration to avoid an issue with loop-time discrepancies
-                if (parentActuator.isNewTarget()){
-                    parentActuator.setInstantTarget(parentActuator.getCurrentPosition());
-                }
                 newParams=false;
                 createMotionProfile();
                 profileStartTime=timer.time();
             }
         }
         public void createMotionProfile(){
+            currentTarget = parentActuator.getTarget();
             profileStartPos=parentActuator.getCurrentPosition();
             double distance = parentActuator.getTarget() - profileStartPos;
             if (distance!=0) {
@@ -210,7 +217,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
             else{
                 phase=Phase.IDLE;
                 targetVelocity=0;
-                return parentActuator.getTarget();
+                return currentTarget;
             }
         }
         @Override

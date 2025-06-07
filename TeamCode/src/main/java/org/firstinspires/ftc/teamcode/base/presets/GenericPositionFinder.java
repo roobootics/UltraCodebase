@@ -55,6 +55,7 @@ public abstract class GenericPositionFinder extends LinearOpMode { //Used to fin
         }
 
         waitForStart();
+        executor.setWriteToTelemetry(this::updateTelemetry);
         executor.setActions(
                 new NonLinearActions.RunResettingLoop(
                         new NonLinearActions.PressTrigger(new NonLinearActions.IfThen(
@@ -69,7 +70,6 @@ public abstract class GenericPositionFinder extends LinearOpMode { //Used to fin
                                 conditions
                         )
                 ),
-                new NonLinearActions.WriteToTelemetry(this::updateTelemetry),
                 new NonLinearActions.PowerOnCommand()
         );
         executor.runLoop(this::opModeIsActive);

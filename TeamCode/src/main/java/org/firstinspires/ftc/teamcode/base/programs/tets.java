@@ -4,7 +4,9 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import static org.firstinspires.ftc.teamcode.base.Components.telemetryAddData;
+import static org.firstinspires.ftc.teamcode.base.Components.timer;
 import static org.firstinspires.ftc.teamcode.base.NonLinearActions.executor;
+import static org.firstinspires.ftc.teamcode.base.programs.RunConfigs.TestServo.profile;
 import static org.firstinspires.ftc.teamcode.base.programs.RunConfigs.TestServo.testMotor;
 import static org.firstinspires.ftc.teamcode.base.programs.RunConfigs.TestServo.testServo;
 
@@ -12,50 +14,24 @@ import org.firstinspires.ftc.teamcode.base.NonLinearActions;
 
 @TeleOp
 public class tets extends LinearOpMode {
+    public double prevTime;
     @Override
     public void runOpMode(){
         RunConfigs.TestServo.init(hardwareMap,telemetry);
         testMotor.resetEncoders();
-        NonLinearActions.NonLinearAction sequence = new NonLinearActions.RunLoop(new NonLinearActions.NonLinearSequentialAction(
-                testServo.moveToTargetAction(180),
-                testServo.moveToTargetAction(0)
-        ));
-        NonLinearActions.ActionHolder holder = new NonLinearActions.ActionHolder();
         waitForStart();
+        executor.setWriteToTelemetry(()->{
+            telemetryAddData("a",testMotor.getInstantTarget());
+            telemetryAddData("target",testMotor.getTarget());
+            telemetryAddData("e",testMotor.getCurrentPosition());
+            telemetryAddData("vel",testMotor.getVelocity());
+            telemetryAddData("control",testMotor.getCurrControlFuncKey());
+            telemetryAddData("targetVel", profile.getProfileData().get("targetVelocity"));
+            telemetryAddData("phase", profile.getPhase());
+        });
         executor.setActions(
-                new NonLinearActions.ResetAndLoopForDuration(
-                        10,
-                       NonLinearActions.triggeredFSMAction(
-                               ()->(gamepad1.right_bumper),
-                               ()->(gamepad1.left_bumper),
-                               2,
-                               testMotor.moveToTargetAction(50),
-                               testMotor.moveToTargetAction(200),
-                               testMotor.moveToTargetAction(500)
-                       )
-                ),
-                new NonLinearActions.RunResettingLoop(
-                        NonLinearActions.triggeredToggleAction(
-                                ()->(gamepad1.a),
-                                new NonLinearActions.InstantAction(()->holder.setAction(
-                                        NonLinearActions.triggeredToggleAction(
-                                                () -> (gamepad1.b),
-                                                new NonLinearActions.InstantAction(()->executor.addAction(sequence)),
-                                                new NonLinearActions.InstantAction(()->executor.removeAction(sequence))
-                                        )
-                                )),
-                                new NonLinearActions.InstantAction(holder::removeAction)
-                        ),
-                        holder
-                ),
-                new NonLinearActions.PowerOnCommand(),
-                new NonLinearActions.WriteToTelemetry(
-                    ()->{
-                        telemetryAddData("a",testMotor.getInstantTarget());
-                        telemetryAddData("e",testMotor.getCurrentPosition());
-                        telemetryAddData("vel",testMotor.getVelocity());
-                    }
-                )
+                new NonLinearActions.RunResettingLoop(testMotor.triggeredDynamicTargetAction(()->(gamepad1.right_bumper),()->(gamepad1.left_bumper),2)),
+                new NonLinearActions.PowerOnCommand()
         );
         executor.runLoop(this::opModeIsActive);
     }

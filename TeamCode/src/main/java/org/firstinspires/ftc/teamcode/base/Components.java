@@ -62,7 +62,6 @@ public abstract class Components {
             }
             telemetry.update();
         }
-        prevTelemetryOutput=telemetryOutput;
         telemetryOutput.clear();
     }
     public static final ElapsedTime timer = new ElapsedTime(); //Central timer used by everything (e.g. sleep action, motion profile)
@@ -93,7 +92,7 @@ public abstract class Components {
             readers.add(this);
         }
         public E cachedRead(){
-            if (Objects.nonNull(storedReadValue)){
+            if (Objects.isNull(storedReadValue)){
                 storedReadValue=read.call();
             }
             return storedReadValue;
@@ -113,13 +112,15 @@ public abstract class Components {
     }
     @Target(ElementType.METHOD)
     public @interface Actuate{} //Used to denote methods that actually move a part, like setPower or setPosition
-    public abstract static class PartsConfig{ //Classes overriding PartsConfig will have static fields that hold all the actuators for a build. Similar to Mr. Nayal's JSON files that held the components and data on each component of a build.
+    public abstract static class PartsConfig{ //Classes overriding PartsConfig will have static fields that hold all the actuators for a build.
         //Create field of type Actuator here to hold the actuators
         public static void initialize(HardwareMap hardwareMap, Telemetry telemetry){ //Inner method to initialize hardwareMap and telemetry, common for all PartsConfigs. Each PartsConfig creates their own init method which will use this.
             Components.hardwareMap=hardwareMap;
             Components.telemetry=telemetry;
             timer.reset(); //Static variables are preserved between runs, so timer needs to be reset
             actuators.clear(); //Static variables are preserved between runs, so its better for actuators to be cleared
+            telemetryOutput.clear();
+            prevTelemetryOutput.clear();
         }
     }
     public abstract static class ControlFunction<E extends Actuator<?>>{ //The subclasses of this are methods that are called to control actuators and get them to the target, such as PID or motion profiles. Each function works with a specific type of actuator. Multiple can run at once
@@ -755,13 +756,13 @@ public abstract class Components {
         @SafeVarargs
         public BotServo(String name, String[] names, Function<Servo, Double> getCurrentPosition, int currentPosPollingInterval, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, double errorTol, double defaultTimeout, Servo.Direction[] directions, double range, double initialTarget, String[] controlFuncKeys, List<ControlFunction<BotServo>>... controlFuncs) {
             super(name, Servo.class, names, getCurrentPosition, currentPosPollingInterval, maxTargetFunc, minTargetFunc, errorTol, defaultTimeout);
+            setTarget(initialTarget);
             this.positionConversion=(Double pos)->(pos*range);
             this.positionConversionInverse=(Double pos)->(pos/range);
             for (int i=0;i<directions.length;i++){
                 Objects.requireNonNull(parts.get(names[i])).setDirection(directions[i]);
             }
             this.funcRegister=new ControlFuncRegister<BotServo>(this,controlFuncKeys, controlFuncs);
-            setTarget(initialTarget);
         }
         public BotServo(String name, String[] names, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, double servoSpeedDPS, double defaultTimeout, Servo.Direction[] directions, double range, double initialTarget) {
             this(name,names,new TimeBasedLocalizers.ServoTimeBasedLocalizer(servoSpeedDPS/range)::getCurrentPosition,1,maxTargetFunc,minTargetFunc,1.5,defaultTimeout,directions,range, initialTarget, new String[]{"setPos"}, new ArrayList<>(Collections.singleton(new ServoControl())));

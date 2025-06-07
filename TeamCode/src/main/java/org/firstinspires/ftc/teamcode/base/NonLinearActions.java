@@ -6,6 +6,7 @@ import static org.firstinspires.ftc.teamcode.base.Components.timer;
 
 import static org.firstinspires.ftc.teamcode.base.Components.BotMotor;
 import static org.firstinspires.ftc.teamcode.base.Components.updateTelemetry;
+import static org.firstinspires.ftc.teamcode.base.programs.RunConfigs.TestServo.testMotor;
 
 import com.qualcomm.robotcore.hardware.IMU;
 
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 
 public abstract class NonLinearActions { //Command-based (or action-based) system
     public static final ParallelActionExecutor executor=new ParallelActionExecutor(); //This runs NonLinearActions
+    private static final HashMap<String, Double> initialActuatorTargets = new HashMap<>();
     public abstract static class NonLinearAction { //Base class for any action
         private boolean isBusy = false; //Indicates whether the action is active or not
         private boolean isStart = true; //Actions know if they've just started running or not
@@ -171,7 +173,9 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             action.stop();
         }
         public void setAction(NonLinearAction action){
-            this.action.stop();
+            if (Objects.nonNull(this.action)){
+                this.action.stop();
+            }
             action.reset();
             this.action=action;
         }
@@ -179,33 +183,19 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             return this.action;
         }
         public void removeAction(){
-            action.stop();
-            action=null;
+            if (Objects.nonNull(this.action)){
+                action.stop();
+                action=null;
+            }
         }
     }
-    public static class WriteToTelemetry extends ContinuousAction { //This action runs each actuator's control functions and updates the telemetry using the updateTelemetry function it is provided
-        public WriteToTelemetry(Procedure updateTelemetry) {
-            super(updateTelemetry);
-        }
-        public WriteToTelemetry() {
-            super(() -> {
-                for (Components.Actuator<?> actuator : actuators.values()) {
-                    telemetryAddData(actuator.getName() + " target", actuator.getTarget());
-                    telemetryAddData(actuator.getName() + " instant target", actuator.getInstantTarget());
-                    telemetryAddData(actuator.getName() + " current position", actuator.getCurrentPosition());
-                    telemetryAddData("", "");
-                }
-            });
-        }
-    }
-
     public static class PowerOnCommand extends NonLinearAction { //This action automatically activates each actuator's default control functions when they are first commanded
         private final HashMap<String, Boolean> actuatorsCommanded = new HashMap<>();
         @Override
         boolean runProcedure() {
             if (actuatorsCommanded.size()<actuators.size()) {
                 for (String key : actuators.keySet()) {
-                    if (Objects.requireNonNull(actuators.get(key)).isNewTarget() && !actuatorsCommanded.containsKey(key)) {
+                    if (Objects.requireNonNull(actuators.get(key)).getTarget()!=Objects.requireNonNull(initialActuatorTargets.get(key)) && !actuatorsCommanded.containsKey(key)) {
                         Objects.requireNonNull(actuators.get(key)).switchControl(Objects.requireNonNull(actuators.get(key)).getDefaultControlKey());
                         actuatorsCommanded.put(key, true);
                     }
@@ -979,12 +969,26 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         private ArrayList<NonLinearAction> actions;
         private final ArrayList<NonLinearAction> actionsToAdd = new ArrayList<>();
         private final ArrayList<NonLinearAction> actionsToRemove = new ArrayList<>();
+        private boolean isStartOfProgram = true;
+        private Procedure writeToTelemetry = ()->{};
         private ParallelActionExecutor(){
         }
         public void setActions(NonLinearAction...commandGroups){
             this.actions =new ArrayList<>(Arrays.asList(commandGroups));
         }
+        public ArrayList<NonLinearAction> getActions(){
+            return new ArrayList<>(this.actions);
+        }
+        public void setWriteToTelemetry(Procedure procedure){
+            this.writeToTelemetry=procedure;
+        }
         public void runOnce(){
+            if (isStartOfProgram){
+                for (String key:actuators.keySet()){
+                    initialActuatorTargets.put(key, Objects.requireNonNull(actuators.get(key)).getTarget());
+                }
+                isStartOfProgram=false;
+            }
             this.actions.addAll(actionsToAdd);
             this.actions.removeAll(actionsToRemove);
             actionsToAdd.clear();
@@ -1002,6 +1006,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 actuator.resetNewTarget(); actuator.resetNewActuation();
             }
             Components.CachedReader.resetAllCaches();
+            writeToTelemetry.call();
             updateTelemetry();
         }
         public void runLoop(Condition condition){
