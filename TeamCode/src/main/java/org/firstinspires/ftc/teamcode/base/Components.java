@@ -728,12 +728,9 @@ public abstract class Components {
                     setPower(-0.2);
                 }
                 if (getCurrentAmps()>stallVolts){
-                    double pos = getCurrentPosition();
-                    Function<Double,Double> oldPositionConversion = positionConversion;
-                    positionConversion=(Double d)->(oldPositionConversion.apply(d)-pos);
-                    setOffset(-resetPosition);
-                    setTarget(0);
                     setPower(0);
+                    setOffset(getCurrentPosition()-resetPosition);
+                    setTarget(resetPosition);
                     isStallResetting=false;
                 }
                 return isStallResetting;
