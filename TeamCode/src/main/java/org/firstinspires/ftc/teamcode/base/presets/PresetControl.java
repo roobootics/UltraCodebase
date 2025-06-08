@@ -116,11 +116,12 @@ public abstract class PresetControl { //Holds control functions that actuators c
         private double cruiseDistance;
         private double MAX_VELOCITY;
         private double ACCELERATION;
-        private double profileStartTime;
+        private double lastLoopTime=0;
         private double profileStartPos;
         private double startVelocity;
         private double targetVelocity;
         private Phase phase = Phase.IDLE;
+        private double elapsedTime;
         public TrapezoidalMotionProfile(double maxVelocity, double acceleration){
             this.MAX_VELOCITY=maxVelocity;
             this.ACCELERATION=acceleration;
@@ -137,16 +138,14 @@ public abstract class PresetControl { //Holds control functions that actuators c
         }
         @Override
         protected void runProcedure() {
-            if (parentActuator.isNewTarget()){
-                parentActuator.setInstantTarget(parentActuator.getCurrentPosition());
-            }
-            parentActuator.setInstantTarget(runMotionProfileOnce());
-            if (parentActuator.isNewTarget()||newParams||isStart()){ //When the profile needs to be reset, it will reset not in the current, but in the next loop iteration to avoid an issue with loop-time discrepancies
+            if (parentActuator.isNewTarget()||newParams||isStart()){
                 newParams=false;
                 createMotionProfile(parentActuator.getTarget(), parentActuator.getCurrentPosition());
             }
+            parentActuator.setInstantTarget(runMotionProfileOnce());
         }
         public void createMotionProfile(double target, double position){
+            elapsedTime=0;
             currentTarget = target;
             profileStartPos=position;
             double distance = target - profileStartPos;
@@ -161,6 +160,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
                 decelDistance = currentMaxVelocity * decelDT + 0.5 * currentDeceleration * decelDT * decelDT;
                 cruiseDistance = Math.abs(distance - accelDistance - decelDistance) * Math.signum(currentMaxVelocity);
                 if (Math.abs(accelDistance + cruiseDistance + decelDistance) > Math.abs(distance)) {
+                    cruiseDistance=0;
                     double halfExceededDistance = (distance - accelDistance - decelDistance) / 2;
                     accelDistance = accelDistance + halfExceededDistance;
                     accelDT = Math.max(
@@ -174,7 +174,6 @@ public abstract class PresetControl { //Holds control functions that actuators c
                             (-currentMaxVelocity - Math.sqrt(Math.abs(currentMaxVelocity * currentMaxVelocity + 2 * currentDeceleration * decelDistance))) / (currentDeceleration)
                     );
                 }
-                cruiseDistance = Math.abs(distance - accelDistance - decelDistance) * Math.signum(currentMaxVelocity);
                 cruiseDT = cruiseDistance / currentMaxVelocity;
                 if (Double.isNaN(accelDT) || Double.isNaN(accelDistance) || Double.isNaN(decelDT) || Double.isNaN(decelDistance) || Double.isNaN(cruiseDT) || Double.isNaN(cruiseDistance) || accelDT < 0 || decelDT < 0 || cruiseDT < 0) {
                     accelDT = 0;
@@ -193,10 +192,11 @@ public abstract class PresetControl { //Holds control functions that actuators c
                 cruiseDistance=0;
                 decelDistance=0;
             }
-            profileStartTime=timer.time();
         }
         public double runMotionProfileOnce(){
-            double elapsedTime = timer.time()-profileStartTime;
+            double time=timer.time();
+            elapsedTime+=time-lastLoopTime;
+            lastLoopTime=time;
             if (elapsedTime < accelDT){
                 phase=Phase.ACCEL;
                 targetVelocity = startVelocity + currentAcceleration * elapsedTime;
