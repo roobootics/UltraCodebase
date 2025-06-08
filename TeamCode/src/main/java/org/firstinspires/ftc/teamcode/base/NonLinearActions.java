@@ -984,6 +984,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
         public void runOnce(){
             if (isStartOfProgram){
+                initialActuatorTargets.clear();
                 for (String key:actuators.keySet()){
                     initialActuatorTargets.put(key, Objects.requireNonNull(actuators.get(key)).getTarget());
                 }

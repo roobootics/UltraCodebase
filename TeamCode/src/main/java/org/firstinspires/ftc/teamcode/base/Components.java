@@ -121,6 +121,7 @@ public abstract class Components {
             actuators.clear(); //Static variables are preserved between runs, so its better for actuators to be cleared
             telemetryOutput.clear();
             prevTelemetryOutput.clear();
+            CachedReader.readers.clear();
         }
     }
     public abstract static class ControlFunction<E extends Actuator<?>>{ //The subclasses of this are methods that are called to control actuators and get them to the target, such as PID or motion profiles. Each function works with a specific type of actuator. Multiple can run at once
