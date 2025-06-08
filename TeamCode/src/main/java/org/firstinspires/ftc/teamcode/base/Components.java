@@ -759,7 +759,7 @@ public abstract class Components {
             this.funcRegister=new ControlFuncRegister<BotServo>(this,controlFuncKeys, controlFuncs);
         }
         public BotServo(String name, String[] names, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, double servoSpeedDPS, double defaultTimeout, Servo.Direction[] directions, double range, double initialTarget) {
-            this(name,names,new TimeBasedLocalizers.ServoTimeBasedLocalizer(servoSpeedDPS/range)::getCurrentPosition,1,maxTargetFunc,minTargetFunc,1.5,defaultTimeout,directions,range, initialTarget, new String[]{"setPos"}, new ArrayList<>(Collections.singleton(new ServoControl())));
+            this(name,names,new TimeBasedLocalizers.ServoTimeBasedLocalizer(servoSpeedDPS/range,initialTarget)::getCurrentPosition,1,maxTargetFunc,minTargetFunc,1.5,defaultTimeout,directions,range, initialTarget, new String[]{"setPos"}, new ArrayList<>(Collections.singleton(new ServoControl())));
             setTimeBasedLocalization(true);
         }
         @Actuate

@@ -11,8 +11,8 @@ public abstract class TimeBasedLocalizers{
         private final double ABS_SERVO_SPEED;
         private double prevPosition;
         private double prevTime;
-        public ServoTimeBasedLocalizer(double servoSpeed){
-            this.ABS_SERVO_SPEED=servoSpeed;
+        public ServoTimeBasedLocalizer(double servoSpeed, double initialTarget){
+            this.ABS_SERVO_SPEED=servoSpeed; this.prevPosition=initialTarget;
         }
         public double getCurrentPosition(Servo servo) {
             if (!Double.isNaN(servo.getPosition())){
