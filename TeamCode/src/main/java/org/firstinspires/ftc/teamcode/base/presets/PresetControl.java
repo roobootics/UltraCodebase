@@ -11,6 +11,7 @@ import org.firstinspires.ftc.teamcode.base.LambdaInterfaces.ReturningFunc;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Objects;
 
 public abstract class PresetControl { //Holds control functions that actuators can use. Note that more control functions, like other types of motion profiling, can be coded and used.
     public static class PIDF<E extends CRActuator<?>> extends ControlFunction<E>{
@@ -120,6 +121,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
         private double profileStartPos;
         private double startVelocity;
         private double targetVelocity;
+        private double instantTarget;
         private Phase phase = Phase.IDLE;
         private double elapsedTime;
         public TrapezoidalMotionProfile(double maxVelocity, double acceleration){
@@ -139,15 +141,18 @@ public abstract class PresetControl { //Holds control functions that actuators c
         @Override
         protected void runProcedure() {
             if (parentActuator.isNewTarget()||newParams||isStart()){
+                if (isStart()){
+                    instantTarget=parentActuator.getCurrentPosition();
+                }
                 newParams=false;
-                createMotionProfile(parentActuator.getTarget(), parentActuator.getCurrentPosition());
+                createMotionProfile(parentActuator.getTarget());
             }
             parentActuator.setInstantTarget(runMotionProfileOnce());
         }
-        public void createMotionProfile(double target, double position){
+        public void createMotionProfile(double target){
             elapsedTime=0;
             currentTarget = target;
-            profileStartPos=position;
+            profileStartPos = instantTarget;
             double distance = target - profileStartPos;
             if (distance!=0) {
                 startVelocity=targetVelocity;
@@ -200,29 +205,30 @@ public abstract class PresetControl { //Holds control functions that actuators c
             if (elapsedTime < accelDT){
                 phase=Phase.ACCEL;
                 targetVelocity = startVelocity + currentAcceleration * elapsedTime;
-                return profileStartPos + startVelocity * elapsedTime + 0.5 * currentAcceleration * elapsedTime*elapsedTime;
+                instantTarget = profileStartPos + startVelocity * elapsedTime + 0.5 * currentAcceleration * elapsedTime*elapsedTime;
             }
             else if (elapsedTime < accelDT+cruiseDT){
                 phase=Phase.CRUISE;
                 double cruiseCurrentDT = elapsedTime - accelDT;
                 targetVelocity = currentMaxVelocity;
-                return profileStartPos + accelDistance + currentMaxVelocity * cruiseCurrentDT;
+                instantTarget = profileStartPos + accelDistance + currentMaxVelocity * cruiseCurrentDT;
             }
             else if (elapsedTime < accelDT+cruiseDT+decelDT){
                 phase=Phase.DECEL;
                 double decelCurrentDT = elapsedTime - accelDT - cruiseDT;
                 targetVelocity = currentMaxVelocity + currentDeceleration * decelCurrentDT;
-                return profileStartPos + accelDistance + cruiseDistance + currentMaxVelocity * decelCurrentDT + 0.5 * currentDeceleration * decelCurrentDT*decelCurrentDT;
+                instantTarget = profileStartPos + accelDistance + cruiseDistance + currentMaxVelocity * decelCurrentDT + 0.5 * currentDeceleration * decelCurrentDT*decelCurrentDT;
             }
             else{
                 phase=Phase.IDLE;
                 targetVelocity=0;
-                return currentTarget;
+                instantTarget = currentTarget;
             }
+            return instantTarget;
         }
         @Override
         public void stopProcedure() {
-            phase=Phase.OFF; targetVelocity=0;
+            phase=Phase.OFF; targetVelocity=0; instantTarget=0;
         }
         public HashMap<String,Double> getProfileData(){
             HashMap<String,Double> data = new HashMap<>();
@@ -234,7 +240,11 @@ public abstract class PresetControl { //Holds control functions that actuators c
             data.put("cruiseDT",cruiseDT);
             data.put("decelDT",decelDT);
             data.put("targetVelocity",targetVelocity);
+            data.put("elapsedTime",elapsedTime);
             return data;
+        }
+        public double getProfileValue(String label){
+            return Objects.requireNonNull(getProfileData().get(label));
         }
         public Phase getPhase(){
             return phase;
