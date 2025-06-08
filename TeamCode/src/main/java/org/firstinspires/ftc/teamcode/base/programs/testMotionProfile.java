@@ -9,7 +9,7 @@ public class testMotionProfile {
     public static void main(String[] args){
         timer.reset();
         PresetControl.TrapezoidalMotionProfile<Components.BotMotor> profile = new PresetControl.TrapezoidalMotionProfile<>(10000,5000);
-        double targetposition=0;
+        double targetposition;
         double target=0;
         double prevTime=0;
         while (timer.time()<2){

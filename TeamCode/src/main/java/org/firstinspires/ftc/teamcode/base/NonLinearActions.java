@@ -1,12 +1,10 @@
 package org.firstinspires.ftc.teamcode.base;
 
 import static org.firstinspires.ftc.teamcode.base.Components.actuators;
-import static org.firstinspires.ftc.teamcode.base.Components.telemetryAddData;
 import static org.firstinspires.ftc.teamcode.base.Components.timer;
 
 import static org.firstinspires.ftc.teamcode.base.Components.BotMotor;
 import static org.firstinspires.ftc.teamcode.base.Components.updateTelemetry;
-import static org.firstinspires.ftc.teamcode.base.programs.RunConfigs.TestServo.testMotor;
 
 import com.qualcomm.robotcore.hardware.IMU;
 
@@ -753,10 +751,10 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         private final ReturningFunc<Double> xFun;
         private final ReturningFunc<Double> yFun;
         private final ReturningFunc<Double> rxFun;
-        private final Condition slowDownFun;
+        private final ReturningFunc<Double> slowDownFun;
         private final BotMotor[] motors;
 
-        public RobotCentricMecanumAction(BotMotor[] motors, ReturningFunc<Double> xFun, ReturningFunc<Double> yFun, ReturningFunc<Double> rxFun, Condition slowDownFun) {
+        public RobotCentricMecanumAction(BotMotor[] motors, ReturningFunc<Double> xFun, ReturningFunc<Double> yFun, ReturningFunc<Double> rxFun, ReturningFunc<Double> slowDownFun) {
             this.xFun = xFun;
             this.yFun = yFun;
             this.rxFun = rxFun;
@@ -765,7 +763,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
 
         public RobotCentricMecanumAction(BotMotor[] motors, ReturningFunc<Double> xFun, ReturningFunc<Double> yFun, ReturningFunc<Double> rxFun) {
-            this(motors, xFun, yFun, rxFun, null);
+            this(motors, xFun, yFun, rxFun, ()->(1.0));
         }
 
         @Override
@@ -782,17 +780,11 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             rotX = rotX * 1.1;  // Counteract imperfect strafing
 
             double denominator = Math.max(Math.abs(rotY) + Math.abs(rotX) + Math.abs(rx), 1);
-            double frontLeftPower = (rotY + rotX + rx) / denominator;
-            double backLeftPower = (rotY - rotX + rx) / denominator;
-            double frontRightPower = (rotY - rotX - rx) / denominator;
-            double backRightPower = (rotY + rotX - rx) / denominator;
-
-            if (slowDownFun != null && slowDownFun.call()) { // Checks for left trigger input, slows all motors by 25%
-                frontLeftPower = 0.75 * (rotY + rotX + rx) / denominator;
-                backLeftPower = 0.75 * (rotY - rotX + rx) / denominator;
-                frontRightPower = 0.75 * (rotY - rotX - rx) / denominator;
-                backRightPower = 0.75 * (rotY + rotX - rx) / denominator;
-            }
+            double slowDownAmount=slowDownFun.call();
+            double frontLeftPower = slowDownAmount*(rotY + rotX + rx) / denominator;
+            double backLeftPower = slowDownAmount*(rotY - rotX + rx) / denominator;
+            double frontRightPower = slowDownAmount*(rotY - rotX - rx) / denominator;
+            double backRightPower = slowDownAmount*(rotY + rotX - rx) / denominator;
 
             motors[0].setPower(frontLeftPower);
             motors[1].setPower(backLeftPower);
@@ -806,11 +798,11 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         private final ReturningFunc<Double> xFun;
         private final ReturningFunc<Double> yFun;
         private final ReturningFunc<Double> rxFun;
-        private final Condition slowDownFun;
+        private final ReturningFunc<Double> slowDownFun;
         private final BotMotor[] motors;
         private final IMU imu;
 
-        public FieldCentricMecanumAction(BotMotor[] motors, IMU imu, ReturningFunc<Double> xFun, ReturningFunc<Double> yFun, ReturningFunc<Double> rxFun, Condition slowDownFun) {
+        public FieldCentricMecanumAction(BotMotor[] motors, IMU imu, ReturningFunc<Double> xFun, ReturningFunc<Double> yFun, ReturningFunc<Double> rxFun, ReturningFunc<Double> slowDownFun) {
             this.xFun = xFun;
             this.yFun = yFun;
             this.rxFun = rxFun;
@@ -820,7 +812,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
 
         public FieldCentricMecanumAction(BotMotor[] motors, IMU imu, ReturningFunc<Double> xFun, ReturningFunc<Double> yFun, ReturningFunc<Double> rxFun) {
-            this(motors, imu, xFun, yFun, rxFun, null);
+            this(motors, imu, xFun, yFun, rxFun, ()->(1.0));
         }
 
         @Override
@@ -837,17 +829,11 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             rotX = rotX * 1.1;  // Counteract imperfect strafing
 
             double denominator = Math.max(Math.abs(rotY) + Math.abs(rotX) + Math.abs(rx), 1);
-            double frontLeftPower = (rotY + rotX + rx) / denominator;
-            double backLeftPower = (rotY - rotX + rx) / denominator;
-            double frontRightPower = (rotY - rotX - rx) / denominator;
-            double backRightPower = (rotY + rotX - rx) / denominator;
-
-            if (slowDownFun != null && slowDownFun.call()) { // Checks for left trigger input, slows all motors by 25%
-                frontLeftPower = 0.75 * (rotY + rotX + rx) / denominator;
-                backLeftPower = 0.75 * (rotY - rotX + rx) / denominator;
-                frontRightPower = 0.75 * (rotY - rotX - rx) / denominator;
-                backRightPower = 0.75 * (rotY + rotX - rx) / denominator;
-            }
+            double slowDownAmount=slowDownFun.call();
+            double frontLeftPower = slowDownAmount*(rotY + rotX + rx) / denominator;
+            double backLeftPower = slowDownAmount*(rotY - rotX + rx) / denominator;
+            double frontRightPower = slowDownAmount*(rotY - rotX - rx) / denominator;
+            double backRightPower = slowDownAmount*(rotY + rotX - rx) / denominator;
 
             motors[0].setPower(frontLeftPower);
             motors[1].setPower(backLeftPower);
