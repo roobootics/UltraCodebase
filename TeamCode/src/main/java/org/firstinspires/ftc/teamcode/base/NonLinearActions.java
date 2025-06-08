@@ -6,9 +6,6 @@ import static org.firstinspires.ftc.teamcode.base.Components.timer;
 import static org.firstinspires.ftc.teamcode.base.Components.BotMotor;
 import static org.firstinspires.ftc.teamcode.base.Components.updateTelemetry;
 
-import com.qualcomm.robotcore.hardware.IMU;
-
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.base.LambdaInterfaces.Procedure;
 import org.firstinspires.ftc.teamcode.base.LambdaInterfaces.ReturningFunc;
 
@@ -800,19 +797,19 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         private final ReturningFunc<Double> rxFun;
         private final ReturningFunc<Double> slowDownFun;
         private final BotMotor[] motors;
-        private final IMU imu;
+        private final ReturningFunc<Double> getHeading;
 
-        public FieldCentricMecanumAction(BotMotor[] motors, IMU imu, ReturningFunc<Double> xFun, ReturningFunc<Double> yFun, ReturningFunc<Double> rxFun, ReturningFunc<Double> slowDownFun) {
+        public FieldCentricMecanumAction(BotMotor[] motors, ReturningFunc<Double> getHeading, int imuPollingRate, ReturningFunc<Double> xFun, ReturningFunc<Double> yFun, ReturningFunc<Double> rxFun, ReturningFunc<Double> slowDownFun) {
             this.xFun = xFun;
             this.yFun = yFun;
             this.rxFun = rxFun;
             this.slowDownFun = slowDownFun;
             this.motors = motors;
-            this.imu = imu;
+            this.getHeading = new Components.CachedReader<>(getHeading,imuPollingRate)::cachedRead;
         }
 
-        public FieldCentricMecanumAction(BotMotor[] motors, IMU imu, ReturningFunc<Double> xFun, ReturningFunc<Double> yFun, ReturningFunc<Double> rxFun) {
-            this(motors, imu, xFun, yFun, rxFun, ()->(1.0));
+        public FieldCentricMecanumAction(BotMotor[] motors, ReturningFunc<Double> getHeading, int imuPollingRate, ReturningFunc<Double> xFun, ReturningFunc<Double> yFun, ReturningFunc<Double> rxFun) {
+            this(motors, getHeading, imuPollingRate, xFun, yFun, rxFun, ()->(1.0));
         }
 
         @Override
@@ -821,7 +818,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             double x = xFun.call();
             double rx = -rxFun.call();
 
-            double botHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+            double botHeading = getHeading.call();
 
             double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
             double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
