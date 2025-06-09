@@ -198,7 +198,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             return true;
         }
     }
-    public static class PersistentContinuousActionHolder extends ContinuousActionHolder{ //ContinuousActionHolder where one can only set its action if there is no action inside.
+    public static class PersistentContinuousActionHolder extends ContinuousActionHolder{ //ContinuousActionHolder where one can only set its action if there is no action inside or if the action inside has finished running.
         @Override
         public void setAction(NonLinearAction action){
             if (Objects.isNull(getAction())){
