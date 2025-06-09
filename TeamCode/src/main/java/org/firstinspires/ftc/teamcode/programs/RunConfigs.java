@@ -1,19 +1,7 @@
-package org.firstinspires.ftc.teamcode.base.programs;
-
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.hardware.Servo;
-
-import org.firstinspires.ftc.robotcore.external.Telemetry;
-import org.firstinspires.ftc.teamcode.base.Components;
-import org.firstinspires.ftc.teamcode.base.Components.PartsConfig;
-import org.firstinspires.ftc.teamcode.base.Components.BotServo;
-import org.firstinspires.ftc.teamcode.base.presets.PresetControl;
-
-import java.util.Arrays;
-import java.util.List;
+package org.firstinspires.ftc.teamcode.programs;
 
 public abstract class RunConfigs {
+    /*
     public static class TestServo extends PartsConfig {
         public static BotServo testServo;
         public static Components.BotMotor testMotor;
@@ -41,4 +29,5 @@ public abstract class RunConfigs {
             );
         }
     }
+    */
 }

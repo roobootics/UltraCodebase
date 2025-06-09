@@ -37,8 +37,8 @@ import java.util.function.Function;
 import org.firstinspires.ftc.teamcode.base.LambdaInterfaces.ReturningFunc;
 import org.firstinspires.ftc.teamcode.base.LambdaInterfaces.Condition;
 
-import org.firstinspires.ftc.teamcode.base.presets.PresetControl.ServoControl;
-import org.firstinspires.ftc.teamcode.base.presets.TimeBasedLocalizers;
+import org.firstinspires.ftc.teamcode.presets.PresetControl.ServoControl;
+import org.firstinspires.ftc.teamcode.presets.TimeBasedLocalizers;
 
 public abstract class Components {
     private static HardwareMap hardwareMap;
