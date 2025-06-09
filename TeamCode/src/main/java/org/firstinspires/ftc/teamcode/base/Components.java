@@ -378,17 +378,13 @@ public abstract class Components {
             public MoveToTargetAction(double target){
                 this(()->(target), defaultMovementTimeout);
             }
-            @Override
-            public void stopProcedure(){
-                setTarget(getCurrentPosition());
-            }
         }
         public class SetOffsetAction extends CompoundAction { //Action to set the offset
             public SetOffsetAction(ReturningFunc<Double> offsetFunc, double timeout){
                 group = new NonLinearSequentialAction(
                         new InstantAction(()-> setOffset(offsetFunc.call())),
                         new SleepUntilTrue(
-                                ()->(Math.abs(getCurrentPosition()-target)<errorTol),
+                                ()->(isBroken||Math.abs(getCurrentPosition()-target)<errorTol),
                                 timeout
                         )
                 );
@@ -401,10 +397,6 @@ public abstract class Components {
             }
             public SetOffsetAction(double offset){
                 this(()->(offset), defaultMovementTimeout);
-            }
-            @Override
-            public void stopProcedure(){
-                setTarget(getCurrentPosition());
             }
         }
         public MoveToTargetAction moveToTargetAction(double target){

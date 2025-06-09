@@ -187,6 +187,27 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             }
         }
     }
+    public static class ContinuousActionHolder extends ActionHolder{ //ActionHolder that won't stop running if it has no action inside; it will wait for another action to be inserted.
+        @Override
+        boolean runProcedure(){
+            if (Objects.nonNull(getAction())){
+                if (!getAction().run()){
+                    removeAction();
+                }
+            }
+            return true;
+        }
+    }
+    public static class PersistentContinuousActionHolder extends ContinuousActionHolder{ //ContinuousActionHolder where one can only set its action if there is no action inside.
+        @Override
+        public void setAction(NonLinearAction action){
+            if (Objects.isNull(getAction())){
+                super.setAction(action);
+            }
+        }
+        @Override
+        final public void removeAction(){}
+    }
     public static class PowerOnCommand extends NonLinearAction { //This action automatically activates each actuator's default control functions when they are first commanded
         private final HashMap<String, Boolean> actuatorsCommanded = new HashMap<>();
         @Override
