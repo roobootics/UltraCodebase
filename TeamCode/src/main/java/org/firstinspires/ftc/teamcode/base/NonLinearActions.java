@@ -187,7 +187,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             }
         }
     }
-    public static class ContinuousActionHolder extends ActionHolder{ //ActionHolder that won't stop running if it has no action inside; it will wait for another action to be inserted.
+    public static class ContinuousActionHolder extends ActionHolder{ //ActionHolder that won't stop running if it has no action inside or if the action inside has finished running; it will wait for another action to be inserted.
         @Override
         boolean runProcedure(){
             if (Objects.nonNull(getAction())){
