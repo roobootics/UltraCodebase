@@ -547,17 +547,8 @@ public abstract class Components {
         @Actuate
         public void setPower(double power){ //Sets power to all synchronized parts at once
             if (actuationStateUnlocked) {
-                power=Math.max(Math.min(power, maxPowerFunc.call()), minPowerFunc.call());
-                if (Math.abs(power-Objects.requireNonNull(this.powers.get(partNames[0])))>0.05) {
-                    for (String name:partNames) {
-                        this.powers.put(name,power);
-                        Objects.requireNonNull(parts.get(name)).setPower(power);
-                    }
-                    if (getTimeBasedLocalization()){
-                        resetCurrentPositions();
-                        getCurrentPosition();
-                    }
-                    setNewActuation();
+                for (String name:partNames) {
+                    setPower(power,name);
                 }
             }
         }
