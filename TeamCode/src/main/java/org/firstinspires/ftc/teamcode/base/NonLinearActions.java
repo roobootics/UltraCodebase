@@ -57,6 +57,12 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 reset();
             }
         }
+        final public void pause(){
+            if (isBusy) {
+                stopProcedure();
+                isBusy = false;
+            }
+        }
         final public boolean isBusy(){
             return isBusy;
         }
@@ -70,10 +76,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             isEnabled=true;
         }
         final public void disable(){
-            if (isBusy) {
-                stopProcedure();
-                isBusy=false;
-            }
+            pause();
             isEnabled=false;
         }
     }

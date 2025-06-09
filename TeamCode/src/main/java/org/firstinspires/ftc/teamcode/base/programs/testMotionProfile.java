@@ -9,14 +9,18 @@ public class testMotionProfile {
     public static void main(String[] args){
         timer.reset();
         PresetControl.TrapezoidalMotionProfile<Components.BotMotor> profile = new PresetControl.TrapezoidalMotionProfile<>(10000,5000);
-        double targetposition;
-        double target=0;
+        double targetposition=0;
+        double target=20000;
         double prevTime=0;
-        while (timer.time()<2){
+        boolean switched=false;
+        profile.createMotionProfile(target);
+        while (timer.time()<4){
             double time=timer.time();
-            target+=0.1;
+            if (targetposition>10000 && !switched){
+                target=0;
+                profile.createMotionProfile(target);
+            }
             targetposition=profile.runMotionProfileOnce();
-            profile.createMotionProfile(target);
             if (time-prevTime>0.005){
                 prevTime=time;
                 System.out.print(profile.getPhase()); System.out.print("     "); System.out.print(timer.time()); System.out.print("     "); System.out.print(targetposition); System.out.print("     "); System.out.print(target); System.out.print("     "); System.out.print(profile.getProfileData());
