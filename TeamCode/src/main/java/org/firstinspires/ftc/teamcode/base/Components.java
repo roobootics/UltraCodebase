@@ -533,7 +533,7 @@ public abstract class Components {
                 power=Math.max(Math.min(power, maxPowerFunc.call()), minPowerFunc.call());
                 E part = parts.get(name);
                 assert part != null;
-                if (Math.abs(power-part.getPower())>0.05) {
+                if (Math.abs(power-part.getPower())>0.02) {
                     part.setPower(power);
                     powers.put(name,power);
                     if (getTimeBasedLocalization()){ //If current position is calculated by time, it needs to be updated everytime the actuator moves
