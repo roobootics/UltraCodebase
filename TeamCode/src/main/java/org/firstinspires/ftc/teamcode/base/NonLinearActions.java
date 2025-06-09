@@ -973,7 +973,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         }
     }
     public static class ParallelActionExecutor{
-        private ArrayList<NonLinearAction> actions;
+        private ArrayList<NonLinearAction> actions = new ArrayList<>();
         private final ArrayList<NonLinearAction> actionsToAdd = new ArrayList<>();
         private final ArrayList<NonLinearAction> actionsToRemove = new ArrayList<>();
         private boolean isStartOfProgram = true;
@@ -981,7 +981,10 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
         private ParallelActionExecutor(){
         }
         public void setActions(NonLinearAction...commandGroups){
-            this.actions =new ArrayList<>(Arrays.asList(commandGroups));
+            this.actions=new ArrayList<>(Arrays.asList(commandGroups));
+        }
+        public void clearActions(){
+            this.actions.clear();
         }
         public ArrayList<NonLinearAction> getActions(){
             return new ArrayList<>(this.actions);

@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.base;
 
+import static org.firstinspires.ftc.teamcode.base.NonLinearActions.executor;
+
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -121,6 +123,7 @@ public abstract class Components {
             actuators.clear(); //Static variables are preserved between runs, so its better for actuators to be cleared
             telemetryOutput.clear();
             prevTelemetryOutput.clear();
+            executor.clearActions();
             CachedReader.readers.clear();
         }
     }
