@@ -533,7 +533,7 @@ public abstract class Components {
                 power=Math.max(Math.min(power, maxPowerFunc.call()), minPowerFunc.call());
                 E part = parts.get(name);
                 assert part != null;
-                if (Math.abs(power-part.getPower())>0.02) {
+                if (Math.abs(power-part.getPower())>0.03) {
                     part.setPower(power);
                     powers.put(name,power);
                     if (getTimeBasedLocalization()){ //If current position is calculated by time, it needs to be updated everytime the actuator moves
@@ -751,7 +751,7 @@ public abstract class Components {
         @Actuate
         public void setPosition(double position){
             position=Math.max(minTargetFunc.call(),Math.min(position, maxTargetFunc.call()));
-            if (actuationStateUnlocked && (Math.abs(currCommandedPos-position)>0.05||ignoreSetPosCaching)){
+            if (actuationStateUnlocked && (Math.abs(currCommandedPos-position)>0.07||ignoreSetPosCaching)){
                 currCommandedPos=position;
                 for (Servo part:parts.values()){part.setPosition(positionConversionInverse.apply(position));}
                 if (getTimeBasedLocalization()){
