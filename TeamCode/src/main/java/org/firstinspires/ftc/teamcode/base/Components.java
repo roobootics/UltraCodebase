@@ -402,10 +402,10 @@ public abstract class Components {
                 this(()->(offset), defaultMovementTimeout);
             }
         }
-        public NonLinearAction instantSetTargetAction(double target){
+        public InstantAction instantSetTargetAction(double target){
             return new InstantAction(()->setTarget(target));
         }
-        public NonLinearAction instantSetTargetAction(ReturningFunc<Double> targetFunc){
+        public InstantAction instantSetTargetAction(ReturningFunc<Double> targetFunc){
             return new InstantAction(()->setTarget(targetFunc.call()));
         }
         public MoveToTargetAction moveToTargetAction(double target){
