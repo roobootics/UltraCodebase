@@ -186,6 +186,12 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 action=null;
             }
         }
+        public InstantAction setActionAction(NonLinearAction action){
+            return new InstantAction(()->this.setAction(action));
+        }
+        public InstantAction removeActionAction(){
+            return new InstantAction(this::removeAction);
+        }
     }
     public static class ContinuousActionHolder extends ActionHolder{ //ActionHolder that won't stop running if it has no action inside or if the action inside has finished running; it will wait for another action to be inserted.
         @Override
