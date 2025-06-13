@@ -631,6 +631,7 @@ public abstract class Components {
     //Each of the bottom-level subclass constructors will accept getCurrentPosition functions and control functions, since those cater to a specific subclass.
     public static class BotMotor extends CRActuator<DcMotorEx>{
         private boolean isStallResetting;
+        private final HashMap<String, ReturningFunc<Double>> velocityReaders = new HashMap<>();
         @SafeVarargs
         public BotMotor(String name, String[] names, Function<DcMotorEx,Double> getCurrentPosition, int currentPosPollingInterval, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, ReturningFunc<Double> maxPowerFunc, ReturningFunc<Double> minPowerFunc, double errorTol, double defaultTimeout, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<BotMotor>>... controlFuncs) {
             super(name, DcMotorEx.class, names, getCurrentPosition, currentPosPollingInterval, maxTargetFunc, minTargetFunc, maxPowerFunc,minPowerFunc,errorTol, defaultTimeout, directions);
@@ -643,6 +644,9 @@ public abstract class Components {
         @SafeVarargs
         public BotMotor(String name, String[] names, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, ReturningFunc<Double> maxPowerFunc, ReturningFunc<Double> minPowerFunc, double errorTol, double defaultTimeout, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<BotMotor>>... controlFuncs) {
             super(name, DcMotorEx.class, names, (DcMotorEx motor)->((double) motor.getCurrentPosition()), 1, maxTargetFunc, minTargetFunc, maxPowerFunc,minPowerFunc,errorTol, defaultTimeout, directions);
+            for (String partName:getPartNames()){
+                velocityReaders.put(partName,new CachedReader<>(Objects.requireNonNull(parts.get(name))::getVelocity,1)::cachedRead);
+            }
             for (DcMotorEx part:parts.values()){
                 part.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
                 part.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -666,10 +670,13 @@ public abstract class Components {
             }
             this.funcRegister=new ControlFuncRegister<BotMotor>(this,new String[]{},new ArrayList<>());
         }
+        public double getVelocity(String name){
+            return Objects.requireNonNull(velocityReaders.get(name)).call();
+        }
         public double getVelocity(){ //Returns avg velocity of all parts
             double avg=0;
-            for (DcMotorEx part:parts.values()){
-                avg+=part.getVelocity();
+            for (String name:partNames){
+                avg+=getVelocity(name);
             }
             return avg/parts.size();
         }

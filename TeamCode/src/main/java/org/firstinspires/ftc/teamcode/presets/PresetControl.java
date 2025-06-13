@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.presets;
 
 import static org.firstinspires.ftc.teamcode.base.Components.timer;
 
+import org.firstinspires.ftc.teamcode.base.Components;
 import org.firstinspires.ftc.teamcode.base.Components.Actuator;
 import org.firstinspires.ftc.teamcode.base.Components.BotServo;
 import org.firstinspires.ftc.teamcode.base.Components.ControlFunction;
@@ -80,10 +81,17 @@ public abstract class PresetControl { //Holds control functions that actuators c
                     integralSums[i] += parentActuator.getTarget()-currentPosition;
                     integralIntervalTime=timer.time();
                 }
+                double dTerm;
+                if (!(parentActuator instanceof Components.BotMotor)){
+                    dTerm=shouldApplyDerivative.call() * ((parentActuator.getInstantTarget() - currentPosition) - previousErrors[i])/(timer.time()-prevLoopTime);
+                }
+                else{
+                    dTerm=shouldApplyDerivative.call() * ((Components.BotMotor) parentActuator).getVelocity(parentActuator.partNames[i]);
+                }
                 parentActuator.setPower(
                         constants.get(i).kP * (parentActuator.getInstantTarget()-currentPosition) +
                                 constants.get(i).kI * integralSums[i] * (timer.time()-prevLoopTime) +
-                                constants.get(i).kD * shouldApplyDerivative.call() * ((parentActuator.getInstantTarget() - currentPosition) - previousErrors[i])/(timer.time()-prevLoopTime) +
+                                constants.get(i).kD * dTerm +
                                 constants.get(i).kF * constants.get(i).feedForwardFunc.call(),
                         parentActuator.partNames[i]
                 );
