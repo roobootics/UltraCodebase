@@ -86,7 +86,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
                     dTerm=shouldApplyDerivative.call() * ((parentActuator.getInstantTarget() - currentPosition) - previousErrors[i])/(timer.time()-prevLoopTime);
                 }
                 else{
-                    dTerm=shouldApplyDerivative.call() * ((Components.BotMotor) parentActuator).getVelocity(parentActuator.partNames[i]);
+                    dTerm=shouldApplyDerivative.call() * -((Components.BotMotor) parentActuator).getVelocity(parentActuator.partNames[i]);
                 }
                 parentActuator.setPower(
                         constants.get(i).kP * (parentActuator.getInstantTarget()-currentPosition) +
