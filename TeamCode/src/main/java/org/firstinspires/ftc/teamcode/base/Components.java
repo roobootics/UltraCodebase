@@ -114,18 +114,15 @@ public abstract class Components {
     }
     @Target(ElementType.METHOD)
     public @interface Actuate{} //Used to denote methods that actually move a part, like setPower or setPosition
-    public abstract static class PartsConfig{ //Classes overriding PartsConfig will have static fields that hold all the actuators for a build.
-        //Create field of type Actuator here to hold the actuators
-        public static void initialize(HardwareMap hardwareMap, Telemetry telemetry){ //Inner method to initialize hardwareMap and telemetry, common for all PartsConfigs. Each PartsConfig creates their own init method which will use this.
-            Components.hardwareMap=hardwareMap;
-            Components.telemetry=telemetry;
-            timer.reset(); //Static variables are preserved between runs, so timer needs to be reset
-            actuators.clear(); //Static variables are preserved between runs, so its better for actuators to be cleared
-            telemetryOutput.clear();
-            prevTelemetryOutput.clear();
-            executor.clearActions();
-            CachedReader.readers.clear();
-        }
+    public static void initialize(HardwareMap hardwareMap, Telemetry telemetry){ //Method to initialize hardwareMap and telemetry.
+        Components.hardwareMap=hardwareMap;
+        Components.telemetry=telemetry;
+        timer.reset(); //Static variables are preserved between runs, so timer needs to be reset
+        actuators.clear(); //Static variables are preserved between runs, so its better for actuators to be cleared
+        telemetryOutput.clear();
+        prevTelemetryOutput.clear();
+        executor.clearActions();
+        CachedReader.readers.clear();
     }
     public abstract static class ControlFunction<E extends Actuator<?>>{ //The subclasses of this are methods that are called to control actuators and get them to the target, such as PID or motion profiles. Each function works with a specific type of actuator. Multiple can run at once
         protected E parentActuator; //Each function has access to the actuator it runs on
