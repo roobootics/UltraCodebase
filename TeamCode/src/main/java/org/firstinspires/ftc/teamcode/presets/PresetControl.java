@@ -77,6 +77,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
             if (isStart()){
                 prevLoopTime=time;
                 integralIntervalTime=time;
+                Arrays.setAll(previousErrors,(int i)->(0));
                 for (int i=0;i<previousFiveLoopTimes.size();i++){
                     previousFiveLoopTimes.get(i).clear();
                     previousFiveErrors.get(i).clear();
@@ -124,6 +125,35 @@ public abstract class PresetControl { //Holds control functions that actuators c
                 }
             }
             prevLoopTime=time;
+        }
+        @Override
+        public void stopProcedure(){
+            parentActuator.setPower(0);
+        }
+    }
+    public static class SQUID<E extends CRActuator<?>> extends ControlFunction<E>{
+        public ArrayList<Double> kPs;
+        public SQUID(double...kPs){
+            Double[] tempKPs=new Double[kPs.length];
+            Arrays.setAll(tempKPs,(int i)->(kPs[i]));
+            this.kPs=new ArrayList<>(Arrays.asList(tempKPs));
+        }
+        @Override
+        public void registerToParent(E actuator){
+            super.registerToParent(actuator);
+            for (int i=0;i<parentActuator.partNames.length-kPs.size();i++){
+                kPs.add(kPs.get(kPs.size()-1));
+            }
+        }
+        @Override
+        protected void runProcedure() {
+            for (int i=0;i<parentActuator.partNames.length;i++){
+                double error = parentActuator.getInstantTarget()- parentActuator.getCurrentPosition();
+                parentActuator.setPower(
+                        kPs.get(i) * Math.sqrt(Math.abs(error))*Math.signum(error),
+                        parentActuator.getPartNames()[i]
+                );
+            }
         }
         @Override
         public void stopProcedure(){
