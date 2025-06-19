@@ -134,7 +134,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
     }
 
     public abstract static class CompoundAction extends NonLinearAction { //Allows one to represent a sequence of actions as one atomic action. The main difference between this and a sequential action is that you can code custom stop functionality.
-        public NonLinearAction group; //A subclass will assign an action to this.
+        NonLinearAction group; //A subclass will assign an action to this.
         @Override
         boolean runProcedure() {
             if (isStart()) {
@@ -142,7 +142,9 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             }
             return group.run();
         }
-
+        void setGroup(NonLinearAction group){
+            this.group=group;
+        }
         @Override
         public void stopProcedure() {
             group.stop();

@@ -21,6 +21,7 @@ import org.firstinspires.ftc.teamcode.base.NonLinearActions.NonLinearAction;
 import org.firstinspires.ftc.teamcode.base.NonLinearActions.ConditionalAction;
 import org.firstinspires.ftc.teamcode.base.NonLinearActions.PressTrigger;
 import org.firstinspires.ftc.teamcode.base.NonLinearActions.IfThen;
+import org.firstinspires.ftc.teamcode.base.NonLinearActions.RunResettingLoop;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Target;
@@ -405,6 +406,9 @@ public abstract class Components {
         public InstantAction instantSetTargetAction(ReturningFunc<Double> targetFunc){
             return new InstantAction(()->setTarget(targetFunc.call()));
         }
+        public InstantAction instantSetTargetAction(String position){
+            return new InstantAction(()->setTarget(getPos(position)));
+        }
         public MoveToTargetAction moveToTargetAction(double target){
             return new MoveToTargetAction(target);
         }
@@ -456,38 +460,38 @@ public abstract class Components {
         public SetOffsetAction setOffsetAction(ReturningFunc<Double> offsetFunc){
             return new SetOffsetAction(offsetFunc);
         }
-        public PressTrigger triggeredMoveToTargetAction(Condition condition, double target){
-            return new PressTrigger(new IfThen(condition, new MoveToTargetAction(target)));
+        public RunResettingLoop triggeredMoveToTargetAction(Condition condition, double target){
+            return new RunResettingLoop(new PressTrigger(new IfThen(condition, new MoveToTargetAction(target))));
         }
-        public PressTrigger triggeredMoveToTargetAction(Condition condition, ReturningFunc<Double> targetFunc) {
-            return new PressTrigger(new IfThen(condition, moveToTargetAction(targetFunc)));
+        public RunResettingLoop triggeredMoveToTargetAction(Condition condition, ReturningFunc<Double> targetFunc) {
+            return new RunResettingLoop(new PressTrigger(new IfThen(condition, moveToTargetAction(targetFunc))));
         }
-        public PressTrigger triggeredMoveToTargetAction(Condition condition, double target, double timeout){
-                return new PressTrigger(new IfThen(condition, moveToTargetAction(target,timeout)));
+        public RunResettingLoop triggeredMoveToTargetAction(Condition condition, double target, double timeout){
+            return new RunResettingLoop(new PressTrigger(new IfThen(condition, moveToTargetAction(target,timeout))));
         }
-        public PressTrigger triggeredMoveToTargetAction(Condition condition, ReturningFunc<Double> targetFunc, double timeout){
-                return new PressTrigger(new IfThen(condition, moveToTargetAction(targetFunc,timeout)));
+        public RunResettingLoop triggeredMoveToTargetAction(Condition condition, ReturningFunc<Double> targetFunc, double timeout){
+            return new RunResettingLoop(new PressTrigger(new IfThen(condition, moveToTargetAction(targetFunc,timeout))));
         }
-        public PressTrigger triggeredMoveToTargetAction(Condition condition, String position){
-            return new PressTrigger(new IfThen(condition, moveToTargetAction(position)));
+        public RunResettingLoop triggeredMoveToTargetAction(Condition condition, String position){
+            return new RunResettingLoop(new PressTrigger(new IfThen(condition, moveToTargetAction(position))));
         }
-        public PressTrigger triggeredMoveToTargetAction(Condition condition, String position,double timeout){
-            return new PressTrigger(new IfThen(condition, moveToTargetAction(position,timeout)));
+        public RunResettingLoop triggeredMoveToTargetAction(Condition condition, String position,double timeout){
+            return new RunResettingLoop(new PressTrigger(new IfThen(condition, moveToTargetAction(position,timeout))));
         }
-        public PressTrigger triggeredToggleTargetAction(Condition condition, double target1, double target2){
-            return new PressTrigger(new IfThen(condition, toggleTargetAction(target1,target2)));
+        public RunResettingLoop triggeredToggleTargetAction(Condition condition, double target1, double target2){
+            return new RunResettingLoop(new PressTrigger(new IfThen(condition, toggleTargetAction(target1,target2))));
         }
-        public ConditionalAction triggeredDynamicTargetAction(Condition upCondition, Condition downCondition, double change){
-            return new ConditionalAction(new IfThen(upCondition, moveToTargetAction(()->(getTargetMinusOffset()+change))),new IfThen(downCondition, moveToTargetAction(()->(getTargetMinusOffset()-change))));
+        public RunResettingLoop triggeredDynamicTargetAction(Condition upCondition, Condition downCondition, double change){
+            return new RunResettingLoop(new ConditionalAction(new IfThen(upCondition, moveToTargetAction(()->(getTargetMinusOffset()+change))),new IfThen(downCondition, moveToTargetAction(()->(getTargetMinusOffset()-change)))));
         }
-        public PressTrigger triggeredFSMTargetAction(Condition upCondition, Condition downCondition, double...targets){
-            return new PressTrigger(new IfThen(upCondition, upwardFSMTargetAction(targets)),new IfThen(downCondition, downwardFSMTargetAction(targets)));
+        public RunResettingLoop triggeredFSMTargetAction(Condition upCondition, Condition downCondition, double...targets){
+            return new RunResettingLoop(new PressTrigger(new IfThen(upCondition, upwardFSMTargetAction(targets)),new IfThen(downCondition, downwardFSMTargetAction(targets))));
         }
-        public PressTrigger triggeredSetOffsetAction(Condition condition, double offset){
-            return new PressTrigger(new IfThen(condition, new SetOffsetAction(offset)));
+        public RunResettingLoop triggeredSetOffsetAction(Condition condition, double offset){
+            return new RunResettingLoop(new PressTrigger(new IfThen(condition, new SetOffsetAction(offset))));
         }
-        public ConditionalAction triggeredDynamicOffsetAction(Condition upCondition, Condition downCondition, double offsetChange){
-            return new ConditionalAction(new IfThen(upCondition, setOffsetAction(()->(offset+offsetChange))),new IfThen(downCondition, setOffsetAction(()->(offset-offsetChange))));
+        public RunResettingLoop triggeredDynamicOffsetAction(Condition upCondition, Condition downCondition, double offsetChange){
+            return new RunResettingLoop(new ConditionalAction(new IfThen(upCondition, setOffsetAction(()->(offset+offsetChange))),new IfThen(downCondition, setOffsetAction(()->(offset-offsetChange)))));
         }
         public InstantAction switchControlAction(String controlKey){
             return new InstantAction(()->this.switchControl(controlKey));
@@ -511,6 +515,7 @@ public abstract class Components {
         private final ReturningFunc<Double> maxPowerFunc;
         private final ReturningFunc<Double> minPowerFunc;
         //Max and min power boundaries
+        private final HashMap<String,Double> keyPowers = new HashMap<>(); //Stores key powers, like 'intakePower,' etc.
         public boolean dynamicPowerBoundaries=false; //Indicates if the power boundaries can change, which is useful to know
         public CRActuator(String name, Class<E> type, String[] names, Function<E, Double> getCurrentPosition, int pollingRate, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, ReturningFunc<Double> maxPowerFunc, ReturningFunc<Double> minPowerFunc, double errorTol, double defaultTimeout,
                            DcMotorSimple.Direction[] directions) {
@@ -529,6 +534,14 @@ public abstract class Components {
         }
         public CRActuator(String name, Class<E> type, String[] names, ReturningFunc<Double> maxPowerFunc, ReturningFunc<Double> minPowerFunc, DcMotorSimple.Direction[] directions) { //For CRActuators that don't set targets and only use setPower, like drivetrain motors.
             this(name,type,names,(E e)->(0.0), 1,()->(Double.POSITIVE_INFINITY),()->(Double.NEGATIVE_INFINITY),()->(1.0),()->(-1.0),0,0,directions);
+        }
+        public double getKeyPower(String key){
+            return Objects.requireNonNull(keyPowers.get(key));
+        }
+        public void setKeyPowers(String[] keyPowerKeys, double[] keyPowerValues){
+            for (int i=0; i<keyPowerKeys.length; i++){
+                keyPowers.put(keyPowerKeys[i],keyPowerValues[i]);
+            }
         }
         @Actuate
         public void setPower(double power, String name){ //Sets power to a specific part
@@ -579,6 +592,9 @@ public abstract class Components {
         public SetPowerAction setPowerAction(double power){
             return new SetPowerAction(power);
         }
+        public SetPowerAction setPowerAction(String key){
+            return new SetPowerAction(getKeyPower(key));
+        }
         public SetPowerAction togglePowerAction(double power1, double power2){
             return new SetPowerAction(()->{
                 if (Objects.requireNonNull(powers.get(partNames[0]))==power1) return power2; else if (Objects.requireNonNull(powers.get(partNames[0]))==power2) return power1; else return Objects.requireNonNull(powers.get(partNames[0]));
@@ -606,32 +622,40 @@ public abstract class Components {
                 return Objects.requireNonNull(powers.get(partNames[0]));
             });
         }
-        public PressTrigger triggeredSetPowerAction(Condition condition, ReturningFunc<Double> powerFunc){
-            return new PressTrigger(new IfThen(condition, new SetPowerAction(powerFunc)));
+        public RunResettingLoop triggeredSetPowerAction(Condition condition, ReturningFunc<Double> powerFunc){
+            return new RunResettingLoop(new PressTrigger(new IfThen(condition, new SetPowerAction(powerFunc))));
         }
-        public PressTrigger triggeredSetPowerAction(Condition condition, double power){
-            return new PressTrigger(new IfThen(condition, new SetPowerAction(power)));
+        public RunResettingLoop triggeredSetPowerAction(Condition condition, String key){
+            return new RunResettingLoop(new PressTrigger(new IfThen(condition, new SetPowerAction(getKeyPower(key)))));
         }
-        public ConditionalAction triggeredDynamicPowerAction(Condition upCondition, Condition downCondition, double change){
-            return new ConditionalAction(new IfThen(upCondition, setPowerAction(()->(Objects.requireNonNull(powers.get(partNames[0]))+change))),new IfThen(downCondition, setPowerAction(()->(Objects.requireNonNull(powers.get(partNames[0]))-change))));
+        public RunResettingLoop triggeredSetPowerAction(Condition condition, double power){
+            return new RunResettingLoop(new PressTrigger(new IfThen(condition, new SetPowerAction(power))));
         }
-        public PressTrigger triggeredTogglePowerAction(Condition condition, double power1, double power2){
-            return new PressTrigger(new IfThen(condition, togglePowerAction(power1,power2)));
+        public RunResettingLoop triggeredDynamicPowerAction(Condition upCondition, Condition downCondition, double change){
+            return new RunResettingLoop(new ConditionalAction(new IfThen(upCondition, setPowerAction(()->(Objects.requireNonNull(powers.get(partNames[0]))+change))),new IfThen(downCondition, setPowerAction(()->(Objects.requireNonNull(powers.get(partNames[0]))-change)))));
         }
-        public PressTrigger triggeredFSMPowerAction(Condition upCondition, Condition downCondition, double...powers){
-            return new PressTrigger(
+        public RunResettingLoop triggeredTogglePowerAction(Condition condition, double power1, double power2){
+            return new RunResettingLoop(new PressTrigger(new IfThen(condition, togglePowerAction(power1,power2))));
+        }
+        public RunResettingLoop triggeredFSMPowerAction(Condition upCondition, Condition downCondition, double...powers){
+            return new RunResettingLoop(new PressTrigger(
                     new IfThen(upCondition, upwardFSMPowerAction(powers)),
                     new IfThen(downCondition, downwardFSMPowerAction(powers))
-            );
+            ));
         }
     }
     //Each of the bottom-level subclass constructors will accept getCurrentPosition functions and control functions, since those cater to a specific subclass.
     public static class BotMotor extends CRActuator<DcMotorEx>{
         private boolean isStallResetting;
         private final HashMap<String, ReturningFunc<Double>> velocityReaders = new HashMap<>();
+        private final HashMap<String, ReturningFunc<Double>> currentReaders = new HashMap<>();
         @SafeVarargs
         public BotMotor(String name, String[] names, Function<DcMotorEx,Double> getCurrentPosition, int currentPosPollingInterval, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, ReturningFunc<Double> maxPowerFunc, ReturningFunc<Double> minPowerFunc, double errorTol, double defaultTimeout, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<BotMotor>>... controlFuncs) {
             super(name, DcMotorEx.class, names, getCurrentPosition, currentPosPollingInterval, maxTargetFunc, minTargetFunc, maxPowerFunc,minPowerFunc,errorTol, defaultTimeout, directions);
+            for (String partName:getPartNames()){
+                velocityReaders.put(partName,new CachedReader<>(Objects.requireNonNull(parts.get(name))::getVelocity,1)::cachedRead);
+                currentReaders.put(partName,new CachedReader<>(()->Objects.requireNonNull(parts.get(name)).getCurrent(CurrentUnit.AMPS),1)::cachedRead);
+            }
             for (DcMotorEx part:parts.values()){
                 part.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
                 part.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -643,6 +667,7 @@ public abstract class Components {
             super(name, DcMotorEx.class, names, (DcMotorEx motor)->((double) motor.getCurrentPosition()), 1, maxTargetFunc, minTargetFunc, maxPowerFunc,minPowerFunc,errorTol, defaultTimeout, directions);
             for (String partName:getPartNames()){
                 velocityReaders.put(partName,new CachedReader<>(Objects.requireNonNull(parts.get(name))::getVelocity,1)::cachedRead);
+                currentReaders.put(partName,new CachedReader<>(()->Objects.requireNonNull(parts.get(name)).getCurrent(CurrentUnit.AMPS),1)::cachedRead);
             }
             for (DcMotorEx part:parts.values()){
                 part.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -653,6 +678,10 @@ public abstract class Components {
         @SafeVarargs
         public BotMotor(String name, String[] names, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, double errorTol, double defaultTimeout, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<BotMotor>>... controlFuncs) {
             super(name, DcMotorEx.class, names, (DcMotorEx motor)->((double) motor.getCurrentPosition()), 1, maxTargetFunc, minTargetFunc, errorTol, defaultTimeout, directions);
+            for (String partName:getPartNames()){
+                velocityReaders.put(partName,new CachedReader<>(Objects.requireNonNull(parts.get(name))::getVelocity,1)::cachedRead);
+                currentReaders.put(partName,new CachedReader<>(()->Objects.requireNonNull(parts.get(name)).getCurrent(CurrentUnit.AMPS),1)::cachedRead);
+            }
             for (DcMotorEx part:parts.values()){
                 part.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
                 part.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -661,6 +690,10 @@ public abstract class Components {
         }
         public BotMotor(String name, String[] names, ReturningFunc<Double> maxPowerFunc, ReturningFunc<Double> minPowerFunc, DcMotorSimple.Direction[] directions) {
             super(name, DcMotorEx.class, names, maxPowerFunc, minPowerFunc, directions);
+            for (String partName:getPartNames()){
+                velocityReaders.put(partName,new CachedReader<>(Objects.requireNonNull(parts.get(name))::getVelocity,1)::cachedRead);
+                currentReaders.put(partName,new CachedReader<>(()->Objects.requireNonNull(parts.get(name)).getCurrent(CurrentUnit.AMPS),1)::cachedRead);
+            }
             for (DcMotorEx part:parts.values()){
                 part.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
                 part.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -693,10 +726,13 @@ public abstract class Components {
                 part.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
             }
         }
+        public double getCurrentAmps(String partName){
+            return Objects.requireNonNull(currentReaders.get(partName)).call();
+        }
         public double getCurrentAmps(){
             double maxCurrent=0;
-            for (DcMotorEx part:parts.values()){
-                double current=part.getCurrent(CurrentUnit.AMPS);
+            for (String partName:getPartNames()){
+                double current=getCurrentAmps(partName);
                 if (current>maxCurrent){
                     maxCurrent=current;
                 }
