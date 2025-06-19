@@ -654,7 +654,7 @@ public abstract class Components {
             super(name, DcMotorEx.class, names, getCurrentPosition, currentPosPollingInterval, maxTargetFunc, minTargetFunc, maxPowerFunc,minPowerFunc,errorTol, defaultTimeout, directions);
             for (String partName:getPartNames()){
                 velocityReaders.put(partName,new CachedReader<>(Objects.requireNonNull(parts.get(name))::getVelocity,1)::cachedRead);
-                currentReaders.put(partName,new CachedReader<>(()->Objects.requireNonNull(parts.get(name)).getCurrent(CurrentUnit.AMPS),1)::cachedRead);
+                currentReaders.put(partName,new CachedReader<>(()->Objects.requireNonNull(parts.get(name)).getCurrent(CurrentUnit.AMPS),3)::cachedRead);
             }
             for (DcMotorEx part:parts.values()){
                 part.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -667,7 +667,7 @@ public abstract class Components {
             super(name, DcMotorEx.class, names, (DcMotorEx motor)->((double) motor.getCurrentPosition()), 1, maxTargetFunc, minTargetFunc, maxPowerFunc,minPowerFunc,errorTol, defaultTimeout, directions);
             for (String partName:getPartNames()){
                 velocityReaders.put(partName,new CachedReader<>(Objects.requireNonNull(parts.get(name))::getVelocity,1)::cachedRead);
-                currentReaders.put(partName,new CachedReader<>(()->Objects.requireNonNull(parts.get(name)).getCurrent(CurrentUnit.AMPS),1)::cachedRead);
+                currentReaders.put(partName,new CachedReader<>(()->Objects.requireNonNull(parts.get(name)).getCurrent(CurrentUnit.AMPS),3)::cachedRead);
             }
             for (DcMotorEx part:parts.values()){
                 part.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -680,7 +680,7 @@ public abstract class Components {
             super(name, DcMotorEx.class, names, (DcMotorEx motor)->((double) motor.getCurrentPosition()), 1, maxTargetFunc, minTargetFunc, errorTol, defaultTimeout, directions);
             for (String partName:getPartNames()){
                 velocityReaders.put(partName,new CachedReader<>(Objects.requireNonNull(parts.get(name))::getVelocity,1)::cachedRead);
-                currentReaders.put(partName,new CachedReader<>(()->Objects.requireNonNull(parts.get(name)).getCurrent(CurrentUnit.AMPS),1)::cachedRead);
+                currentReaders.put(partName,new CachedReader<>(()->Objects.requireNonNull(parts.get(name)).getCurrent(CurrentUnit.AMPS),3)::cachedRead);
             }
             for (DcMotorEx part:parts.values()){
                 part.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -692,7 +692,7 @@ public abstract class Components {
             super(name, DcMotorEx.class, names, maxPowerFunc, minPowerFunc, directions);
             for (String partName:getPartNames()){
                 velocityReaders.put(partName,new CachedReader<>(Objects.requireNonNull(parts.get(name))::getVelocity,1)::cachedRead);
-                currentReaders.put(partName,new CachedReader<>(()->Objects.requireNonNull(parts.get(name)).getCurrent(CurrentUnit.AMPS),1)::cachedRead);
+                currentReaders.put(partName,new CachedReader<>(()->Objects.requireNonNull(parts.get(name)).getCurrent(CurrentUnit.AMPS),3)::cachedRead);
             }
             for (DcMotorEx part:parts.values()){
                 part.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
