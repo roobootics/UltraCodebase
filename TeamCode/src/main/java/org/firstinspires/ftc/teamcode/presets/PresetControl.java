@@ -2,7 +2,6 @@ package org.firstinspires.ftc.teamcode.presets;
 
 import static org.firstinspires.ftc.teamcode.base.Components.timer;
 
-import org.firstinspires.ftc.teamcode.base.Components;
 import org.firstinspires.ftc.teamcode.base.Components.Actuator;
 import org.firstinspires.ftc.teamcode.base.Components.BotServo;
 import org.firstinspires.ftc.teamcode.base.Components.ControlFunction;
@@ -39,6 +38,8 @@ public abstract class PresetControl { //Holds control functions that actuators c
         }
         private double[] integralSums = new double[]{};
         private double[] previousErrors = new double[]{};
+        private final ArrayList<ArrayList<Double>> previousFiveErrors = new ArrayList<>();
+        private final ArrayList<ArrayList<Double>> previousFiveLoopTimes = new ArrayList<>();
         private double prevLoopTime;
         private double integralIntervalTime;
         private final ArrayList<PIDFConstants> constants;
@@ -65,39 +66,64 @@ public abstract class PresetControl { //Holds control functions that actuators c
             }
             integralSums=new double[parentActuator.partNames.length];
             previousErrors=new double[parentActuator.partNames.length];
+            for (Object o:actuator.getPartNames()){
+                previousFiveErrors.add(new ArrayList<>());
+                previousFiveLoopTimes.add(new ArrayList<>());
+            }
         }
         @Override
         protected void runProcedure() {
+            double time=timer.time();
             if (isStart()){
-                prevLoopTime=timer.time();
-                integralIntervalTime=timer.time();
+                prevLoopTime=time;
+                integralIntervalTime=time;
+                for (int i=0;i<previousFiveLoopTimes.size();i++){
+                    previousFiveLoopTimes.get(i).clear();
+                    previousFiveErrors.get(i).clear();
+                }
             }
             if (isStart()||parentActuator.isNewTarget()){
                 Arrays.setAll(integralSums,(int i)->(0.0));
             }
             for (int i=0;i<parentActuator.partNames.length;i++){
                 double currentPosition = parentActuator.getCurrentPosition(parentActuator.partNames[i]);
-                if (timer.time()-integralIntervalTime>0.1){ //Limited integration history; once every 100 ms
+                double error=parentActuator.getInstantTarget() - currentPosition;
+                if (time-integralIntervalTime>0.1){ //Limited integration history; once every 100 ms
                     integralSums[i] += parentActuator.getTarget()-currentPosition;
                     integralIntervalTime=timer.time();
                 }
                 double dTerm;
-                if (!(parentActuator instanceof Components.BotMotor)){
-                    dTerm=shouldApplyDerivative.call() * ((parentActuator.getInstantTarget() - currentPosition) - previousErrors[i])/(timer.time()-prevLoopTime);
+                if (previousFiveLoopTimes.size()<5){
+                    dTerm=shouldApplyDerivative.call() * ((error) - previousErrors[i])/(time-prevLoopTime);
                 }
                 else{
-                    dTerm=shouldApplyDerivative.call() * -((Components.BotMotor) parentActuator).getVelocity(parentActuator.partNames[i]);
+                    ArrayList<Double> prev5Errors=previousFiveErrors.get(i);
+                    ArrayList<Double> prev5LoopTimes=previousFiveLoopTimes.get(i);
+                    double dtAvg=0;
+                    for (double dt:prev5LoopTimes){
+                        dtAvg+=dt;
+                    }
+                    dtAvg=dtAvg/5;
+                    dTerm=shouldApplyDerivative.call() * (-prev5Errors.get(4)+8*prev5Errors.get(3)-8*prev5Errors.get(1)+prev5Errors.get(0))/dtAvg;
                 }
                 parentActuator.setPower(
-                        constants.get(i).kP * (parentActuator.getInstantTarget()-currentPosition) +
-                                constants.get(i).kI * integralSums[i] * (timer.time()-prevLoopTime) +
+                        constants.get(i).kP * (error) +
+                                constants.get(i).kI * integralSums[i] * (time-prevLoopTime) +
                                 constants.get(i).kD * dTerm +
                                 constants.get(i).kF * constants.get(i).feedForwardFunc.call(),
                         parentActuator.partNames[i]
                 );
-                previousErrors[i]=parentActuator.getInstantTarget()-currentPosition;
+                previousErrors[i]=error;
+                previousFiveLoopTimes.get(i).add(time-prevLoopTime);
+                if (previousFiveLoopTimes.size()>5){
+                    previousFiveLoopTimes.remove(0);
+                }
+                previousFiveErrors.get(i).add(error);
+                if (previousFiveErrors.size()>5){
+                    previousFiveErrors.remove(0);
+                }
             }
-            prevLoopTime=timer.time();
+            prevLoopTime=time;
         }
         @Override
         public void stopProcedure(){
