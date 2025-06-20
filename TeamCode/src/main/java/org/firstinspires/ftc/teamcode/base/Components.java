@@ -43,6 +43,9 @@ import org.firstinspires.ftc.teamcode.presets.TimeBasedLocalizers;
 
 public abstract class Components {
     private static HardwareMap hardwareMap;
+    public static HardwareMap getHardwareMap(){
+        return hardwareMap;
+    }
     private static Telemetry telemetry;
     private static final LinkedHashMap<String,Object> telemetryOutput=new LinkedHashMap<>();
     private static LinkedHashMap<String,Object> prevTelemetryOutput = new LinkedHashMap<>();

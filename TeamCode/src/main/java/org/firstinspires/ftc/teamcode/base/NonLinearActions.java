@@ -730,6 +730,29 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             }
         }
     }
+    public static class StallResetOnStall extends CompoundAction{
+        public BotMotor[] motors;
+        public double[] stallVolts;
+        public double[] resetPositions;
+        public StallResetOnStall(BotMotor[] motors, double[] stallVolts, double[] resetPositions){
+            this.motors=motors;
+            this.stallVolts=stallVolts;
+            this.resetPositions = resetPositions;
+            ConditionalAction[] actions = new ConditionalAction[motors.length];
+            for (int i=0;i<motors.length;i++){
+                int finalI = i;
+                actions[i]=new ConditionalAction(
+                        new IfThen(
+                                ()->((!motors[finalI].isStallResetting()) && (motors[finalI].getCurrentAmps()>stallVolts[finalI])),
+                                motors[finalI].stallResetAction(resetPositions[finalI],stallVolts[finalI])
+                        )
+                );
+            }
+            this.group = new RunLoop(
+                    actions
+            );
+        }
+    }
     public abstract static class SleepUntilPose extends SleepUntilTrue { //Sleeps until the drivetrain and heading get a certain distance from a desired position and heading, or until an optional timeout is reached. Meant to be subclassed depending on the pathing library.
         public static ReturningFunc<double[]> getPose; //Subclasses assign this to a method that can get the drivetrain position, returning x, y, and heading.
         public static void setGetPose(ReturningFunc<double[]> getPose){
@@ -767,7 +790,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             return followPath();
         }
 
-        abstract boolean followPath(); //Here, one implements the autonomous library's method of following paths. The function must return true if the path is still being followed, and false if it has finished
+        public abstract boolean followPath(); //Here, one implements the autonomous library's method of following paths. The function must return true if the path is still being followed, and false if it has finished
 
         public void preBuild() {
         } //Here, one can code anything that must occur right before the path is built.
@@ -819,7 +842,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             motors[1].setPower(backLeftPower);
             motors[2].setPower(frontRightPower);
             motors[3].setPower(backRightPower);
-            return false;
+            return true;
         }
     }
 
@@ -868,23 +891,23 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             motors[1].setPower(backLeftPower);
             motors[2].setPower(frontRightPower);
             motors[3].setPower(backRightPower);
-            return false;
+            return true;
         }
     }
-    public static PressTrigger triggeredToggleAction(Condition condition, NonLinearAction action1, NonLinearAction action2){
+    public static RunResettingLoop triggeredToggleAction(Condition condition, NonLinearAction action1, NonLinearAction action2){
         AtomicBoolean state = new AtomicBoolean(true);
         action1 = new NonLinearSequentialAction(new InstantAction(()->state.set(!state.get())), action1);
         action2 = new NonLinearSequentialAction(new InstantAction(()->state.set(!state.get())), action2);
-        return new PressTrigger(
+        return new RunResettingLoop(new PressTrigger(
                 new IfThen(condition,
                         new SemiPersistentConditionalAction(
                                 new IfThen(state::get,action1),
                                 new IfThen(()->(!state.get()),action2)
                         )
                 )
-        );
+        ));
     }
-    public static PressTrigger triggeredFSMAction(Condition upCondition, Condition downCondition, int startingState, NonLinearAction...actions){
+    public static RunResettingLoop triggeredFSMAction(Condition upCondition, Condition downCondition, int startingState, NonLinearAction...actions){
         if (startingState>actions.length){
             startingState= actions.length;
         }
@@ -908,7 +931,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                     actions[i]
             );
         }
-        return new PressTrigger(
+        return new RunResettingLoop(new PressTrigger(
                 new IfThen(upCondition,
                         new NonLinearSequentialAction(
                                 new InstantAction(()->{if (state.get()<actions.length-1){state.set(state.get()+1);}}),
@@ -925,9 +948,9 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                             )
                     )
                 )
-        );
+        ));
     }
-    public static PressTrigger triggeredCycleAction(Condition condition, NonLinearAction...actions){
+    public static RunResettingLoop triggeredCycleAction(Condition condition, NonLinearAction...actions){
         AtomicInteger state = new AtomicInteger(0);
         IfThen[] ifThens=new IfThen[actions.length];
         for (int i=0;i< ifThens.length;i++){
@@ -942,13 +965,13 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                     }), actions[finalI])
             );
         }
-        return new PressTrigger(
+        return new RunResettingLoop(new PressTrigger(
                 new IfThen(condition,
                     new SemiPersistentConditionalAction(
                         ifThens
                     )
                 )
-        );
+        ));
     }
     public static class RunResettingLoop extends NonLinearParallelAction{ //Group of actions that runs actions in parallel in a while loop and resets them each iteration (used for TeleOp)
         public RunResettingLoop(NonLinearAction...actions){
