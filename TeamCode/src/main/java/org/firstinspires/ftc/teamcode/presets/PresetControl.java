@@ -207,6 +207,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
             if (parentActuator.isNewTarget()||newParams||isStart()){
                 if (isStart()){
                     instantTarget=parentActuator.getCurrentPosition();
+                    lastLoopTime=timer.time();
                 }
                 newParams=false;
                 createMotionProfile(parentActuator.getTarget());
