@@ -91,10 +91,10 @@ public abstract class PresetControl { //Holds control functions that actuators c
                 double error=parentActuator.getInstantTarget() - currentPosition;
                 if (time-integralIntervalTime>0.1){ //Limited integration history; once every 100 ms
                     integralSums[i] += parentActuator.getTarget()-currentPosition;
-                    integralIntervalTime=timer.time();
+                    integralIntervalTime=time;
                 }
                 double dTerm;
-                if (previousFiveLoopTimes.size()<5){
+                if (previousFiveLoopTimes.get(i).size()<5){
                     dTerm=shouldApplyDerivative.call() * ((error) - previousErrors[i])/(time-prevLoopTime);
                 }
                 else{
@@ -116,12 +116,12 @@ public abstract class PresetControl { //Holds control functions that actuators c
                 );
                 previousErrors[i]=error;
                 previousFiveLoopTimes.get(i).add(time-prevLoopTime);
-                if (previousFiveLoopTimes.size()>5){
-                    previousFiveLoopTimes.remove(0);
+                if (previousFiveLoopTimes.get(i).size()>5){
+                    previousFiveLoopTimes.get(i).remove(0);
                 }
                 previousFiveErrors.get(i).add(error);
-                if (previousFiveErrors.size()>5){
-                    previousFiveErrors.remove(0);
+                if (previousFiveErrors.get(i).size()>5){
+                    previousFiveErrors.get(i).remove(0);
                 }
             }
             prevLoopTime=time;
