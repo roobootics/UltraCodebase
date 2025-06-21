@@ -4,8 +4,8 @@ import static org.firstinspires.ftc.teamcode.base.Components.timer;
 
 import org.firstinspires.ftc.teamcode.base.Components.Actuator;
 import org.firstinspires.ftc.teamcode.base.Components.BotServo;
-import org.firstinspires.ftc.teamcode.base.Components.ControlFunction;
 import org.firstinspires.ftc.teamcode.base.Components.CRActuator;
+import org.firstinspires.ftc.teamcode.base.Components.ControlFunction;
 import org.firstinspires.ftc.teamcode.base.LambdaInterfaces.ReturningFunc;
 
 import java.util.ArrayList;
@@ -222,7 +222,11 @@ public abstract class PresetControl { //Holds control functions that actuators c
             if (distance!=0) {
                 startVelocity=targetVelocity;
                 currentMaxVelocity = MAX_VELOCITY * Math.signum(distance);
-                currentAcceleration = ACCELERATION * Math.signum(currentMaxVelocity - startVelocity);
+                double accelSign=Math.signum(currentMaxVelocity - startVelocity);
+                if (accelSign==0){
+                    accelSign=Math.signum(distance);
+                }
+                currentAcceleration = ACCELERATION * accelSign;
                 currentDeceleration = -ACCELERATION * Math.signum(distance);
                 accelDT = (currentMaxVelocity - startVelocity) / currentAcceleration;
                 decelDT = (0 - currentMaxVelocity) / currentDeceleration;
@@ -268,24 +272,24 @@ public abstract class PresetControl { //Holds control functions that actuators c
             elapsedTime+=time-lastLoopTime;
             lastLoopTime=time;
             if (elapsedTime < accelDT){
-                phase=Phase.ACCEL;
+                phase= Phase.ACCEL;
                 targetVelocity = startVelocity + currentAcceleration * elapsedTime;
                 instantTarget = profileStartPos + startVelocity * elapsedTime + 0.5 * currentAcceleration * elapsedTime*elapsedTime;
             }
             else if (elapsedTime < accelDT+cruiseDT){
-                phase=Phase.CRUISE;
+                phase= Phase.CRUISE;
                 double cruiseCurrentDT = elapsedTime - accelDT;
                 targetVelocity = currentMaxVelocity;
                 instantTarget = profileStartPos + accelDistance + currentMaxVelocity * cruiseCurrentDT;
             }
             else if (elapsedTime < accelDT+cruiseDT+decelDT){
-                phase=Phase.DECEL;
+                phase= Phase.DECEL;
                 double decelCurrentDT = elapsedTime - accelDT - cruiseDT;
                 targetVelocity = currentMaxVelocity + currentDeceleration * decelCurrentDT;
                 instantTarget = profileStartPos + accelDistance + cruiseDistance + currentMaxVelocity * decelCurrentDT + 0.5 * currentDeceleration * decelCurrentDT*decelCurrentDT;
             }
             else{
-                phase=Phase.IDLE;
+                phase= Phase.IDLE;
                 targetVelocity=0;
                 instantTarget = currentTarget;
             }
@@ -293,7 +297,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
         }
         @Override
         public void stopProcedure() {
-            phase=Phase.OFF; targetVelocity=0; instantTarget=0;
+            phase= Phase.OFF; targetVelocity=0; instantTarget=0;
         }
         public HashMap<String,Double> getProfileData(){
             HashMap<String,Double> data = new HashMap<>();
@@ -306,6 +310,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
             data.put("decelDT",decelDT);
             data.put("targetVelocity",targetVelocity);
             data.put("elapsedTime",elapsedTime);
+            data.put("profileStartPos",profileStartPos);
             return data;
         }
         public double getProfileValue(String label){
