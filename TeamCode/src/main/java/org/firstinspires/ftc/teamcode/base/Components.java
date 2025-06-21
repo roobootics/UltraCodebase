@@ -72,12 +72,12 @@ public abstract class Components {
     }
     public static final ElapsedTime timer = new ElapsedTime(); //Central timer used by everything (e.g. sleep action, motion profile)
     public static final HashMap<String,Actuator<?>> actuators = new HashMap<>(); //Map of all actuators, each accessible through its name
-    public void activateActuatorControl(){
+    public static void activateActuatorControl(){
         for (Actuator<?> actuator: actuators.values()){
             actuator.switchControl(actuator.getDefaultControlKey());
         }
     }
-    public void resetMotorEncoders(){
+    public static void resetMotorEncoders(){
         for (Actuator<?> actuator: actuators.values()){
             if (actuator instanceof BotMotor){
                 BotMotor castedActuator=(BotMotor) actuator;
