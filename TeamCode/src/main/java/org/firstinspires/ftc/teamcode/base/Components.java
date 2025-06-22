@@ -775,6 +775,7 @@ public abstract class Components {
         private double currCommandedPos;
         private boolean ignoreSetPosCaching = false;
         private final double range;
+        private Function<Double, Double> setPositionConversion;
         @SafeVarargs
         public BotServo(String name, String[] names, Function<Servo, Double> getCurrentPosition, int currentPosPollingInterval, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, double errorTol, double defaultTimeout, Servo.Direction[] directions, double range, //Degree range that servo is programmed to
                         double initialTarget, String[] controlFuncKeys, List<ControlFunction<BotServo>>... controlFuncs) {
@@ -784,18 +785,22 @@ public abstract class Components {
                 Objects.requireNonNull(parts.get(names[i])).setDirection(directions[i]);
             }
             this.range=range;
+            this.setPositionConversion=(Double pos)->pos/range;
             this.funcRegister=new ControlFuncRegister<BotServo>(this,controlFuncKeys, controlFuncs);
         }
         public BotServo(String name, String[] names, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, double servoSpeedDPS, double defaultTimeout, Servo.Direction[] directions, double range, double initialTarget) {
             this(name,names,new TimeBasedLocalizers.ServoTimeBasedLocalizer(servoSpeedDPS/range,initialTarget,range)::getCurrentPosition,1,maxTargetFunc,minTargetFunc,1.5,defaultTimeout,directions,range, initialTarget, new String[]{"setPos"}, new ArrayList<>(Collections.singleton(new ServoControl())));
             setTimeBasedLocalization(true);
         }
+        public void setPositionConversion(Function<Double,Double> setPositionConversion){
+            this.setPositionConversion=setPositionConversion;
+        }
         @Actuate
         public void setPosition(double position){ //Accepts position in degrees
             position=Math.max(minTargetFunc.call(),Math.min(position, maxTargetFunc.call()));
             if (actuationStateUnlocked && (Math.abs(currCommandedPos-position)>0.07||ignoreSetPosCaching)){
                 currCommandedPos=position;
-                for (Servo part:parts.values()){part.setPosition(position/range);}
+                for (Servo part:parts.values()){part.setPosition(setPositionConversion.apply(position));}
                 if (getTimeBasedLocalization()){
                     resetCurrentPositions();
                     getCurrentPosition();
