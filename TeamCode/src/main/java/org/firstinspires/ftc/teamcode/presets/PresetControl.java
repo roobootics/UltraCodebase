@@ -105,7 +105,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
                         dtAvg+=dt;
                     }
                     dtAvg=dtAvg/5;
-                    dTerm=shouldApplyDerivative.call() * (-prev5Errors.get(4)+8*prev5Errors.get(3)-8*prev5Errors.get(1)+prev5Errors.get(0))/dtAvg;
+                    dTerm=shouldApplyDerivative.call() * (-prev5Errors.get(4)+8*prev5Errors.get(3)-8*prev5Errors.get(1)+prev5Errors.get(0))/(12*dtAvg);
                 }
                 parentActuator.setPower(
                         constants.get(i).kP * (error) +
