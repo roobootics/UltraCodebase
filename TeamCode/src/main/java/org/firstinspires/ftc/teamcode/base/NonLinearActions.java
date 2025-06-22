@@ -973,6 +973,20 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
                 )
         ));
     }
+    public static RunResettingLoop triggeredDynamicAction(Condition upCondition, Condition downCondition, NonLinearAction action1, NonLinearAction action2){
+        return new RunResettingLoop(
+                new ConditionalAction(
+                        new IfThen(
+                                upCondition,
+                                action1
+                        ),
+                        new IfThen(
+                                downCondition,
+                                action2
+                        )
+                )
+        );
+    }
     public static class RunResettingLoop extends NonLinearParallelAction{ //Group of actions that runs actions in parallel in a while loop and resets them each iteration (used for TeleOp)
         public RunResettingLoop(NonLinearAction...actions){
             super(actions);
