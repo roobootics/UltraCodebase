@@ -11,8 +11,9 @@ public abstract class TimeBasedLocalizers{
         private final double ABS_SERVO_SPEED;
         private double prevPosition;
         private double prevTime;
-        public ServoTimeBasedLocalizer(double servoSpeed, double initialTarget){
-            this.ABS_SERVO_SPEED=servoSpeed; this.prevPosition=initialTarget;
+        private final double range;
+        public ServoTimeBasedLocalizer(double servoSpeed, double initialTarget,double range){
+            this.ABS_SERVO_SPEED=servoSpeed; this.prevPosition=initialTarget; this.range=range;
         }
         public double getCurrentPosition(Servo servo) {
             if (!Double.isNaN(servo.getPosition())){
@@ -28,7 +29,7 @@ public abstract class TimeBasedLocalizers{
                 }
                 prevTime=time;
             }
-            return prevPosition;
+            return prevPosition*this.range;
         }
     }
     public static class CRTimeBasedLocalizer<E extends DcMotorSimple>{ //Calculates position of a continuous rotation actuator based on time

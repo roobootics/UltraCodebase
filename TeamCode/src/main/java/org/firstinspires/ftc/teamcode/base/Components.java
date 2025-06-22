@@ -169,8 +169,6 @@ public abstract class Components {
         protected ControlFuncRegister<?> funcRegister;
         private String currControlFuncKey;
         private String defaultControlKey;
-        protected Function<Double,Double> positionConversion = (Double pos)->(pos); //Allows one to apply unit conversion on the getCurrentPosition method to return it in a different unit (e.g ticks to inches)
-        protected Function<Double,Double> positionConversionInverse = (Double pos)->(pos);
         private boolean timeBasedLocalization = false; //Indicates whether the getCurrentPosition method of the actuator calculates the position based on time as opposed to an encoder, which is important to know.
         private boolean dynamicTargetBoundaries = false; //Indicates whether the max and min targets can change for a specific actuator. Useful to know if they don't
         private boolean isBroken = false; //Flag for whether the actuator is broken or not
@@ -210,7 +208,7 @@ public abstract class Components {
             ArrayList<CachedReader<Double>> readers = new ArrayList<>();
             for (String name:partNames){
                 this.parts.put(name,Components.hardwareMap.get(type,name)); //Can't do E.class instead of using the parameter 'type' because of generic type erasure
-                CachedReader<Double> reader = new CachedReader<>(()->(positionConversion.apply(getCurrentPosition.apply(parts.get(name)))),currentPosPollingInterval);
+                CachedReader<Double> reader = new CachedReader<>(()->(getCurrentPosition.apply(parts.get(name))),currentPosPollingInterval);
                 readers.add(reader);
                 this.getCurrentPositions.put(name,reader::cachedRead); //The getCurrentPosition function is copied, one for each of the actuator's parts. Position conversion is also applied
             }
@@ -236,12 +234,6 @@ public abstract class Components {
         }
         public String getDefaultControlKey(){
             return defaultControlKey;
-        }
-        public void setPositionConversion(Function<Double,Double> conversion){
-            this.positionConversion=conversion;
-        }
-        public void setPositionConversionInverse(Function<Double,Double> conversion){
-            this.positionConversionInverse=conversion;
         }
         public void setTimeBasedLocalization(boolean timeBasedLocalization){
             this.timeBasedLocalization=timeBasedLocalization;
@@ -782,27 +774,28 @@ public abstract class Components {
     public static class BotServo extends Actuator<Servo>{
         private double currCommandedPos;
         private boolean ignoreSetPosCaching = false;
+        private final double range;
         @SafeVarargs
-        public BotServo(String name, String[] names, Function<Servo, Double> getCurrentPosition, int currentPosPollingInterval, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, double errorTol, double defaultTimeout, Servo.Direction[] directions, double range, double initialTarget, String[] controlFuncKeys, List<ControlFunction<BotServo>>... controlFuncs) {
+        public BotServo(String name, String[] names, Function<Servo, Double> getCurrentPosition, int currentPosPollingInterval, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, double errorTol, double defaultTimeout, Servo.Direction[] directions, double range, //Degree range that servo is programmed to
+                        double initialTarget, String[] controlFuncKeys, List<ControlFunction<BotServo>>... controlFuncs) {
             super(name, Servo.class, names, getCurrentPosition, currentPosPollingInterval, maxTargetFunc, minTargetFunc, errorTol, defaultTimeout);
             setTarget(initialTarget);
-            this.positionConversion=(Double pos)->(pos*range);
-            this.positionConversionInverse=(Double pos)->(pos/range);
             for (int i=0;i<directions.length;i++){
                 Objects.requireNonNull(parts.get(names[i])).setDirection(directions[i]);
             }
+            this.range=range;
             this.funcRegister=new ControlFuncRegister<BotServo>(this,controlFuncKeys, controlFuncs);
         }
         public BotServo(String name, String[] names, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, double servoSpeedDPS, double defaultTimeout, Servo.Direction[] directions, double range, double initialTarget) {
-            this(name,names,new TimeBasedLocalizers.ServoTimeBasedLocalizer(servoSpeedDPS/range,initialTarget)::getCurrentPosition,1,maxTargetFunc,minTargetFunc,1.5,defaultTimeout,directions,range, initialTarget, new String[]{"setPos"}, new ArrayList<>(Collections.singleton(new ServoControl())));
+            this(name,names,new TimeBasedLocalizers.ServoTimeBasedLocalizer(servoSpeedDPS/range,initialTarget,range)::getCurrentPosition,1,maxTargetFunc,minTargetFunc,1.5,defaultTimeout,directions,range, initialTarget, new String[]{"setPos"}, new ArrayList<>(Collections.singleton(new ServoControl())));
             setTimeBasedLocalization(true);
         }
         @Actuate
-        public void setPosition(double position){
+        public void setPosition(double position){ //Accepts position in degrees
             position=Math.max(minTargetFunc.call(),Math.min(position, maxTargetFunc.call()));
             if (actuationStateUnlocked && (Math.abs(currCommandedPos-position)>0.07||ignoreSetPosCaching)){
                 currCommandedPos=position;
-                for (Servo part:parts.values()){part.setPosition(positionConversionInverse.apply(position));}
+                for (Servo part:parts.values()){part.setPosition(position/range);}
                 if (getTimeBasedLocalization()){
                     resetCurrentPositions();
                     getCurrentPosition();
@@ -813,6 +806,7 @@ public abstract class Components {
         public double getPosition(){
             return currCommandedPos;
         }
+        public double getRange(){return range;}
         public boolean isIgnoreSetPosCaching(){
             return ignoreSetPosCaching;
         }
