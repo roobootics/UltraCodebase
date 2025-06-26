@@ -1051,13 +1051,13 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             actionsToRemove.clear();
             this.actions = actions.stream().filter(NonLinearAction::run).collect(Collectors.toCollection(ArrayList::new));
             for (Components.Actuator<?> actuator : actuators.values()) {
-                if (actuator.getDynamicTargetBoundaries()) { //If the actuator's target boundaries can change, this will ensure that the actuator's target never falls outside of the boundaries
-                    actuator.setTarget(actuator.getTargetMinusOffset());
-                }
-                if (actuator instanceof Components.CRActuator && ((Components.CRActuator<?>) actuator).dynamicPowerBoundaries) { //If the CRActuator's power boundaries can change, this will ensure that the CRActuator's power never falls outside of the boundaries
+                //This ensures that old targets do not fall outside of any new max or min targets.
+                actuator.setTarget(actuator.getTargetMinusOffset());
+                if (actuator instanceof Components.CRActuator) {
                     Components.CRActuator<?> castedActuator = ((Components.CRActuator<?>) actuator);
                     castedActuator.setPower(castedActuator.getPower(castedActuator.partNames[0]));
                 }
+                //This ensures that old powers do not fall outside of any new max or min targets.
                 actuator.runControl();
                 actuator.resetNewTarget(); actuator.resetNewActuation();
             }

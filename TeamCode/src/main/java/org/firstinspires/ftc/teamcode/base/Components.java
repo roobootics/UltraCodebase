@@ -170,7 +170,6 @@ public abstract class Components {
         private String currControlFuncKey;
         private String defaultControlKey;
         private boolean timeBasedLocalization = false; //Indicates whether the getCurrentPosition method of the actuator calculates the position based on time as opposed to an encoder, which is important to know.
-        private boolean dynamicTargetBoundaries = false; //Indicates whether the max and min targets can change for a specific actuator. Useful to know if they don't
         private boolean isBroken = false; //Flag for whether the actuator is broken or not
         public class ControlFuncRegister<T extends Actuator<E>>{ //Registers control functions. Parametrized to the subclass of Actuator that is using it. The functions cannot be stored directly in the actuator because of generic type erasure and generic invariance. This approach is cleaner
             private final HashMap<String, List<ControlFunction<T>>> controlFuncsMap = new HashMap<>(); //Map with lists of control functions paired with names.
@@ -240,12 +239,6 @@ public abstract class Components {
         }
         public boolean getTimeBasedLocalization(){
             return this.timeBasedLocalization;
-        }
-        public void setDynamicTargetBoundaries(boolean dynamicTargetBoundaries){
-            this.dynamicTargetBoundaries=dynamicTargetBoundaries;
-        }
-        public boolean getDynamicTargetBoundaries(){
-            return this.dynamicTargetBoundaries;
         }
         public boolean isNewTarget(){
             return newTarget;
@@ -511,7 +504,6 @@ public abstract class Components {
         private final ReturningFunc<Double> minPowerFunc;
         //Max and min power boundaries
         private final HashMap<String,Double> keyPowers = new HashMap<>(); //Stores key powers, like 'intakePower,' etc.
-        public boolean dynamicPowerBoundaries=false; //Indicates if the power boundaries can change, which is useful to know
         public CRActuator(String name, Class<E> type, String[] names, Function<E, Double> getCurrentPosition, int pollingRate, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, ReturningFunc<Double> maxPowerFunc, ReturningFunc<Double> minPowerFunc, double errorTol, double defaultTimeout,
                            DcMotorSimple.Direction[] directions) {
             super(name, type, names, getCurrentPosition, pollingRate, maxTargetFunc, minTargetFunc, errorTol, defaultTimeout);
