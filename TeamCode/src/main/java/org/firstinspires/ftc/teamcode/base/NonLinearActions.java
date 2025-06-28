@@ -142,7 +142,7 @@ public abstract class NonLinearActions { //Command-based (or action-based) syste
             }
             return group.run();
         }
-        void setGroup(NonLinearAction group){
+        protected void setGroup(NonLinearAction group){
             this.group=group;
         }
         @Override
