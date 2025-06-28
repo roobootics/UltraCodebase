@@ -742,7 +742,7 @@ public abstract class Components {
                 this.stallVolts=stallVolts;
             }
             @Override
-            boolean runProcedure() {
+            protected boolean runProcedure() {
                 if (isStart()){
                     isStallResetting=true;
                     setPower(-0.2);
