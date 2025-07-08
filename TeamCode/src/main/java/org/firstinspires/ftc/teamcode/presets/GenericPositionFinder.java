@@ -15,6 +15,7 @@ import java.util.Objects;
 public abstract class GenericPositionFinder extends LinearOpMode { //Used to find the specific positions that we will end up setting actuators to. Allows one to select an actuator and move it.
     //Subclass it to work with a specific PartsConfig. Call the init function of that PartsConfig before calling the runOpMode of this class.
     private int selectedActuatorIndex = 0;
+    protected double dynamicChangeAmount=0.1;
     private final ArrayList<String> actuatorNames = new ArrayList<>();
     public void updateTelemetry(){
         Components.telemetryAddLine(actuatorNames.get(selectedActuatorIndex));
@@ -50,7 +51,7 @@ public abstract class GenericPositionFinder extends LinearOpMode { //Used to fin
             int finalI = i;
             conditions[i]=new NonLinearActions.IfThen(
                     ()->(selectedActuatorIndex==finalI),
-                    Objects.requireNonNull(actuators.get(actuatorNames.get(i))).triggeredDynamicTargetAction(()->(gamepad1.left_bumper),()->(gamepad1.right_bumper),0.1)
+                    Objects.requireNonNull(actuators.get(actuatorNames.get(i))).triggeredDynamicTargetAction(()->(gamepad1.left_bumper),()->(gamepad1.right_bumper),dynamicChangeAmount)
             );
         }
 
