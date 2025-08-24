@@ -780,7 +780,7 @@ public abstract class Components {
         public PressTrigger triggeredStallResetAction(Condition condition, double resetPosition, double stallVolts) {
             return new PressTrigger(new IfThen(condition, stallResetAction(resetPosition, stallVolts)));
         }
-        public class SetPowerForDistance extends CompoundAction{
+        public class SetPowerForDistance extends CompoundAction{ //Makes the motor set a power until it travels a certain distance.
             private double startPosition;
             public SetPowerForDistance(double power, double distance){
                 setGroup(new NonLinearSequentialAction(
