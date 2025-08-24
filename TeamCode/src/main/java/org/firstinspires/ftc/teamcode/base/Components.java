@@ -632,135 +632,171 @@ public abstract class Components {
         }
     }
     //Each of the bottom-level subclass constructors will accept getCurrentPosition functions and control functions, since those cater to a specific subclass.
-    public static class BotMotor extends CRActuator<DcMotorEx>{
+    public static class BotMotor extends CRActuator<DcMotorEx> {
         private boolean isStallResetting;
         private final HashMap<String, ReturningFunc<Double>> velocityReaders = new HashMap<>();
         private final HashMap<String, ReturningFunc<Double>> currentReaders = new HashMap<>();
+
         @SafeVarargs
-        public BotMotor(String name, String[] names, Function<DcMotorEx,Double> getCurrentPosition, int currentPosPollingInterval, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, ReturningFunc<Double> maxPowerFunc, ReturningFunc<Double> minPowerFunc, double errorTol, double defaultTimeout, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<BotMotor>>... controlFuncs) {
-            super(name, DcMotorEx.class, names, getCurrentPosition, currentPosPollingInterval, maxTargetFunc, minTargetFunc, maxPowerFunc,minPowerFunc,errorTol, defaultTimeout, directions);
-            for (String partName:getPartNames()){
-                velocityReaders.put(partName,new CachedReader<>(Objects.requireNonNull(parts.get(name))::getVelocity,1)::cachedRead);
-                currentReaders.put(partName,new CachedReader<>(()->Objects.requireNonNull(parts.get(name)).getCurrent(CurrentUnit.AMPS),3)::cachedRead);
+        public BotMotor(String name, String[] names, Function<DcMotorEx, Double> getCurrentPosition, int currentPosPollingInterval, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, ReturningFunc<Double> maxPowerFunc, ReturningFunc<Double> minPowerFunc, double errorTol, double defaultTimeout, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<BotMotor>>... controlFuncs) {
+            super(name, DcMotorEx.class, names, getCurrentPosition, currentPosPollingInterval, maxTargetFunc, minTargetFunc, maxPowerFunc, minPowerFunc, errorTol, defaultTimeout, directions);
+            for (String partName : getPartNames()) {
+                velocityReaders.put(partName, new CachedReader<>(Objects.requireNonNull(parts.get(name))::getVelocity, 1)::cachedRead);
+                currentReaders.put(partName, new CachedReader<>(() -> Objects.requireNonNull(parts.get(name)).getCurrent(CurrentUnit.AMPS), 3)::cachedRead);
             }
-            for (DcMotorEx part:parts.values()){
+            for (DcMotorEx part : parts.values()) {
                 part.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
                 part.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             }
-            this.funcRegister=new ControlFuncRegister<BotMotor>(this,controlFuncKeys, controlFuncs);
+            this.funcRegister = new ControlFuncRegister<BotMotor>(this, controlFuncKeys, controlFuncs);
         }
+
         @SafeVarargs
         public BotMotor(String name, String[] names, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, ReturningFunc<Double> maxPowerFunc, ReturningFunc<Double> minPowerFunc, double errorTol, double defaultTimeout, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<BotMotor>>... controlFuncs) {
-            super(name, DcMotorEx.class, names, (DcMotorEx motor)->((double) motor.getCurrentPosition()), 1, maxTargetFunc, minTargetFunc, maxPowerFunc,minPowerFunc,errorTol, defaultTimeout, directions);
-            for (String partName:getPartNames()){
-                velocityReaders.put(partName,new CachedReader<>(Objects.requireNonNull(parts.get(name))::getVelocity,1)::cachedRead);
-                currentReaders.put(partName,new CachedReader<>(()->Objects.requireNonNull(parts.get(name)).getCurrent(CurrentUnit.AMPS),3)::cachedRead);
+            super(name, DcMotorEx.class, names, (DcMotorEx motor) -> ((double) motor.getCurrentPosition()), 1, maxTargetFunc, minTargetFunc, maxPowerFunc, minPowerFunc, errorTol, defaultTimeout, directions);
+            for (String partName : getPartNames()) {
+                velocityReaders.put(partName, new CachedReader<>(Objects.requireNonNull(parts.get(name))::getVelocity, 1)::cachedRead);
+                currentReaders.put(partName, new CachedReader<>(() -> Objects.requireNonNull(parts.get(name)).getCurrent(CurrentUnit.AMPS), 3)::cachedRead);
             }
-            for (DcMotorEx part:parts.values()){
+            for (DcMotorEx part : parts.values()) {
                 part.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
                 part.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             }
-            this.funcRegister=new ControlFuncRegister<BotMotor>(this,controlFuncKeys, controlFuncs);
+            this.funcRegister = new ControlFuncRegister<BotMotor>(this, controlFuncKeys, controlFuncs);
         }
+
         @SafeVarargs
         public BotMotor(String name, String[] names, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, double errorTol, double defaultTimeout, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<BotMotor>>... controlFuncs) {
-            super(name, DcMotorEx.class, names, (DcMotorEx motor)->((double) motor.getCurrentPosition()), 1, maxTargetFunc, minTargetFunc, errorTol, defaultTimeout, directions);
-            for (String partName:getPartNames()){
-                velocityReaders.put(partName,new CachedReader<>(Objects.requireNonNull(parts.get(name))::getVelocity,1)::cachedRead);
-                currentReaders.put(partName,new CachedReader<>(()->Objects.requireNonNull(parts.get(name)).getCurrent(CurrentUnit.AMPS),3)::cachedRead);
+            super(name, DcMotorEx.class, names, (DcMotorEx motor) -> ((double) motor.getCurrentPosition()), 1, maxTargetFunc, minTargetFunc, errorTol, defaultTimeout, directions);
+            for (String partName : getPartNames()) {
+                velocityReaders.put(partName, new CachedReader<>(Objects.requireNonNull(parts.get(name))::getVelocity, 1)::cachedRead);
+                currentReaders.put(partName, new CachedReader<>(() -> Objects.requireNonNull(parts.get(name)).getCurrent(CurrentUnit.AMPS), 3)::cachedRead);
             }
-            for (DcMotorEx part:parts.values()){
+            for (DcMotorEx part : parts.values()) {
                 part.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
                 part.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             }
-            this.funcRegister=new ControlFuncRegister<BotMotor>(this,controlFuncKeys, controlFuncs);
+            this.funcRegister = new ControlFuncRegister<BotMotor>(this, controlFuncKeys, controlFuncs);
         }
+
         public BotMotor(String name, String[] names, ReturningFunc<Double> maxPowerFunc, ReturningFunc<Double> minPowerFunc, DcMotorSimple.Direction[] directions) {
             super(name, DcMotorEx.class, names, maxPowerFunc, minPowerFunc, directions);
-            for (String partName:getPartNames()){
-                velocityReaders.put(partName,new CachedReader<>(Objects.requireNonNull(parts.get(name))::getVelocity,1)::cachedRead);
-                currentReaders.put(partName,new CachedReader<>(()->Objects.requireNonNull(parts.get(name)).getCurrent(CurrentUnit.AMPS),3)::cachedRead);
+            for (String partName : getPartNames()) {
+                velocityReaders.put(partName, new CachedReader<>(Objects.requireNonNull(parts.get(name))::getVelocity, 1)::cachedRead);
+                currentReaders.put(partName, new CachedReader<>(() -> Objects.requireNonNull(parts.get(name)).getCurrent(CurrentUnit.AMPS), 3)::cachedRead);
             }
-            for (DcMotorEx part:parts.values()){
+            for (DcMotorEx part : parts.values()) {
                 part.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
                 part.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             }
-            this.funcRegister=new ControlFuncRegister<BotMotor>(this,new String[]{},new ArrayList<>());
+            this.funcRegister = new ControlFuncRegister<BotMotor>(this, new String[]{}, new ArrayList<>());
         }
-        public double getVelocity(String name){
+
+        public double getVelocity(String name) {
             return Objects.requireNonNull(velocityReaders.get(name)).call();
         }
-        public double getVelocity(){ //Returns avg velocity of all parts
-            double avg=0;
-            for (String name:partNames){
-                avg+=getVelocity(name);
+
+        public double getVelocity() { //Returns avg velocity of all parts
+            double avg = 0;
+            for (String name : partNames) {
+                avg += getVelocity(name);
             }
-            return avg/parts.size();
+            return avg / parts.size();
         }
-        public void resetEncoders(){
-            for (DcMotorEx part:parts.values()){
+
+        public void resetEncoders() {
+            for (DcMotorEx part : parts.values()) {
                 part.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
                 part.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             }
         }
-        public void setZeroPowerFloat(){
-            for (DcMotorEx part:parts.values()){
+
+        public void setZeroPowerFloat() {
+            for (DcMotorEx part : parts.values()) {
                 part.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
             }
         }
-        public void setZeroPowerBrake(){
-            for (DcMotorEx part:parts.values()){
+
+        public void setZeroPowerBrake() {
+            for (DcMotorEx part : parts.values()) {
                 part.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
             }
         }
-        public double getCurrentAmps(String partName){
+
+        public double getCurrentAmps(String partName) {
             return Objects.requireNonNull(currentReaders.get(partName)).call();
         }
-        public double getCurrentAmps(){
-            double maxCurrent=0;
-            for (String partName:getPartNames()){
-                double current=getCurrentAmps(partName);
-                if (current>maxCurrent){
-                    maxCurrent=current;
+
+        public double getCurrentAmps() {
+            double maxCurrent = 0;
+            for (String partName : getPartNames()) {
+                double current = getCurrentAmps(partName);
+                if (current > maxCurrent) {
+                    maxCurrent = current;
                 }
             }
             return maxCurrent;
         }
-        public boolean isStallResetting(){
+
+        public boolean isStallResetting() {
             return isStallResetting;
         }
-        public void setMode(DcMotorEx.RunMode mode){
-            for (DcMotorEx part: parts.values()){
+
+        public void setMode(DcMotorEx.RunMode mode) {
+            for (DcMotorEx part : parts.values()) {
                 part.setMode(mode);
             }
         }
+
         public class StallResetAction extends NonLinearAction { //Stall resets encoders, and offsets the position if you want to reset at a non-zero position.
             double resetPosition;
             double stallVolts;
+
             public StallResetAction(double resetPosition, double stallVolts) {
-                this.resetPosition=resetPosition;
-                this.stallVolts=stallVolts;
+                this.resetPosition = resetPosition;
+                this.stallVolts = stallVolts;
             }
+
             @Override
             protected boolean runProcedure() {
-                if (isStart()){
-                    isStallResetting=true;
+                if (isStart()) {
+                    isStallResetting = true;
                     setPower(-0.2);
                 }
-                if (getCurrentAmps()>stallVolts){
+                if (getCurrentAmps() > stallVolts) {
                     setPower(0);
-                    setOffset(getCurrentPosition()-resetPosition);
+                    setOffset(getCurrentPosition() - resetPosition);
                     setTarget(resetPosition);
-                    isStallResetting=false;
+                    isStallResetting = false;
                 }
                 return isStallResetting;
             }
         }
-        public StallResetAction stallResetAction(double resetPosition,double stallVolts){
-            return new StallResetAction(resetPosition,stallVolts);
+
+        public StallResetAction stallResetAction(double resetPosition, double stallVolts) {
+            return new StallResetAction(resetPosition, stallVolts);
         }
-        public PressTrigger triggeredStallResetAction(Condition condition, double resetPosition,double stallVolts){
-            return new PressTrigger(new IfThen(condition,stallResetAction(resetPosition,stallVolts)));
+
+        public PressTrigger triggeredStallResetAction(Condition condition, double resetPosition, double stallVolts) {
+            return new PressTrigger(new IfThen(condition, stallResetAction(resetPosition, stallVolts)));
+        }
+        public class SetPowerForDistance extends CompoundAction{
+            private double startPosition;
+            public SetPowerForDistance(double power, double distance){
+                setGroup(new NonLinearSequentialAction(
+                        new InstantAction(()->startPosition=getCurrentPosition()),
+                        new NonLinearActions.NonLinearParallelAction(
+                                setPowerAction(power)
+                        ),
+                        new SleepUntilTrue(()->(getCurrentPosition()-startPosition)>50),
+                        new NonLinearActions.NonLinearParallelAction(
+                                setPowerAction(0)
+                        )
+                ));
+            }
+        }
+        public SetPowerForDistance setPowerForDistance(double power, double distance){
+            return new SetPowerForDistance(power,distance);
         }
     }
     public static class BotServo extends Actuator<Servo>{
