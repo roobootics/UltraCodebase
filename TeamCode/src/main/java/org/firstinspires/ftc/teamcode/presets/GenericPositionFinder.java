@@ -1,19 +1,19 @@
 package org.firstinspires.ftc.teamcode.presets;
 
 import static org.firstinspires.ftc.teamcode.base.Components.actuators;
-import static org.firstinspires.ftc.teamcode.base.NonLinearActions.executor;
+import static org.firstinspires.ftc.teamcode.base.Commands.executor;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import org.firstinspires.ftc.teamcode.base.Components;
 
-import org.firstinspires.ftc.teamcode.base.NonLinearActions;
+import org.firstinspires.ftc.teamcode.base.Commands;
 
 import java.util.ArrayList;
 import java.util.Objects;
 //Dpad left/right to switch between actuators. If the actuator is a servo, use left/right bumper to move it and see the position.
 public abstract class GenericPositionFinder extends LinearOpMode { //Used to find the specific positions that we will end up setting actuators to. Allows one to select an actuator and move it.
-    //Subclass it to work with a specific PartsConfig. Call the init function of that PartsConfig before calling the runOpMode of this class.
+    //Subclass this class, such that in the subclass's runOpMode, all robot state is initialized before the super's runOpMode runs.
     private int selectedActuatorIndex = 0;
     protected double dynamicChangeAmount=0.1;
     private final ArrayList<String> actuatorNames = new ArrayList<>();
@@ -46,32 +46,32 @@ public abstract class GenericPositionFinder extends LinearOpMode { //Used to fin
             }
             actuatorNames.add(name);
         }
-        NonLinearActions.IfThen[] conditions = new NonLinearActions.IfThen[actuatorNames.size()];
+        Commands.IfThen[] conditions = new Commands.IfThen[actuatorNames.size()];
         for (int i=0;i<actuatorNames.size();i++){
             int finalI = i;
-            conditions[i]=new NonLinearActions.IfThen(
+            conditions[i]=new Commands.IfThen(
                     ()->(selectedActuatorIndex==finalI),
-                    Objects.requireNonNull(actuators.get(actuatorNames.get(i))).triggeredDynamicTargetAction(()->(gamepad1.left_bumper),()->(gamepad1.right_bumper),dynamicChangeAmount)
+                    Objects.requireNonNull(actuators.get(actuatorNames.get(i))).triggeredDynamicTargetCommand(()->(gamepad1.left_bumper),()->(gamepad1.right_bumper),dynamicChangeAmount)
             );
         }
 
         waitForStart();
         executor.setWriteToTelemetry(this::updateTelemetry);
-        executor.setActions(
-                new NonLinearActions.RunResettingLoop(
-                        new NonLinearActions.PressTrigger(new NonLinearActions.IfThen(
+        executor.setCommands(
+                new Commands.RunResettingLoop(
+                        new Commands.PressTrigger(new Commands.IfThen(
                                 ()->(gamepad1.dpad_left),
-                                new NonLinearActions.InstantAction(this::shiftSelectionLeft)
+                                new Commands.InstantCommand(this::shiftSelectionLeft)
                         )),
-                        new NonLinearActions.PressTrigger(new NonLinearActions.IfThen(
+                        new Commands.PressTrigger(new Commands.IfThen(
                                 ()->(gamepad1.dpad_right),
-                                new NonLinearActions.InstantAction(this::shiftSelectionRight)
+                                new Commands.InstantCommand(this::shiftSelectionRight)
                         )),
-                        new NonLinearActions.ConditionalAction(
+                        new Commands.ConditionalCommand(
                                 conditions
                         )
                 ),
-                new NonLinearActions.PowerOnCommand()
+                new Commands.PowerOnCommand()
         );
         executor.runLoop(this::opModeIsActive);
     }
