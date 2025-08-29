@@ -13,6 +13,8 @@ import org.firstinspires.ftc.teamcode.base.Commands;
 import org.firstinspires.ftc.teamcode.pedroPathing.constants.FConstants;
 import org.firstinspires.ftc.teamcode.pedroPathing.constants.LConstants;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.function.Function;
 
 public abstract class Pedro {
@@ -65,6 +67,23 @@ public abstract class Pedro {
             );
         }
     }
+    public static class PedroLinearChainCommand extends PedroCommand{
+        public PedroLinearChainCommand(boolean holdEnd, Pose...poses){ //In a path chain, goes to all positions provided one at a time
+            super(
+                    (PathBuilder b)->{
+                            ArrayList<Pose> poseList = new ArrayList<>();
+                            poseList.add(follower.getPose());
+                            Collections.addAll(poseList,poses);
+                            for (int i=0;i<poses.length;i++){
+                                b.addBezierLine(new Point(poseList.get(i)),new Point(poseList.get(i+1)));
+                                b.setLinearHeadingInterpolation(poseList.get(i).getHeading(),poseList.get(i+1).getHeading());
+                            }
+                            return b;
+                    },
+                    holdEnd
+            );
+        }
+    }
     public static class PedroLinearTransformCommand extends PedroCommand{
         public PedroLinearTransformCommand(double x, double y, double heading, boolean holdEnd){ //Transforms from current position by the given inputs
             super(
@@ -75,7 +94,7 @@ public abstract class Pedro {
             );
         }
     }
-    public static class PedroInstantCommand extends Commands.InstantCommand {
+    public static class PedroInstantCommand extends Commands.InstantCommand { //This action ends instantly and does not wait for the follower to reach its goal
         public PedroInstantCommand(Function<PathBuilder,PathBuilder> buildPath, boolean holdEnd) {
             super(()->follower.followPath(buildPath.apply(follower.pathBuilder()).build(),holdEnd));
         }
@@ -85,6 +104,23 @@ public abstract class Pedro {
             super((PathBuilder b)-> b
                             .addBezierLine(new Point(follower.getPose()),new Point(x,y))
                             .setLinearHeadingInterpolation(follower.getPose().getHeading(),heading),
+                    holdEnd
+            );
+        }
+    }
+    public static class PedroInstantLinearChainCommand extends PedroInstantCommand{
+        public PedroInstantLinearChainCommand(boolean holdEnd, Pose...poses){ //In a path chain, goes to all positions provided one at a time
+            super(
+                    (PathBuilder b)->{
+                        ArrayList<Pose> poseList = new ArrayList<>();
+                        poseList.add(follower.getPose());
+                        Collections.addAll(poseList,poses);
+                        for (int i=0;i<poses.length;i++){
+                            b.addBezierLine(new Point(poseList.get(i)),new Point(poseList.get(i+1)));
+                            b.setLinearHeadingInterpolation(poseList.get(i).getHeading(),poseList.get(i+1).getHeading());
+                        }
+                        return b;
+                    },
                     holdEnd
             );
         }
