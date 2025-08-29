@@ -37,6 +37,9 @@ public abstract class Pedro {
     public static void setStartingPose(Pose pose){
         follower.poseUpdater.setStartingPose(pose);
     }
+    public static Commands.RunResettingLoop updateCommand(){
+        return new Commands.RunResettingLoop(new Commands.InstantCommand(follower::update));
+    }
     public static class PedroCommand extends Commands.PathCommand<PathChain>{
         private final boolean holdEnd;
         public PedroCommand(Function<PathBuilder,PathBuilder> buildPath, boolean holdEnd) {
@@ -48,8 +51,6 @@ public abstract class Pedro {
             if (isStart()){
                 follower.followPath(getPath(),holdEnd);
             }
-            follower.update();
-            follower.updateCallbacks();
             return follower.isBusy();
         }
         @Override
