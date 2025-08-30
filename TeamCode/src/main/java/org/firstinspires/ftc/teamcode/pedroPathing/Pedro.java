@@ -25,7 +25,7 @@ public abstract class Pedro {
             return new double[]{pose.getX(),pose.getY(),pose.getHeading()};
         });
     }
-    public static final Follower follower=new Follower(Components.getHardwareMap(), FConstants.class, LConstants.class);
+    public static final Follower follower=Constants.createFollower();
     private final static LambdaInterfaces.ReturningFunc<Pose> getPose = new Components.CachedReader<>(
             ()->{follower.updatePose(); return follower.getPose();},
             1
