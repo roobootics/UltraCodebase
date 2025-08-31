@@ -374,6 +374,9 @@ public abstract class Commands { //Command-based system
         public void stopProcedure() {
             remainingCommands.get(0).stop();
         }
+        public Command getCurrentAction(){
+            return remainingCommands.get(0);
+        }
     }
 
     public static class ParallelCommand extends Command{ //Runs commands in parallel
