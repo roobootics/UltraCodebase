@@ -47,6 +47,7 @@ public abstract class Pedro {
             if (isStart()){
                 follower.followPath(getPath(),holdEnd);
             }
+            Drawing.drawDebug(follower);
             return follower.isBusy();
         }
         @Override

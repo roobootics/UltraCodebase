@@ -39,7 +39,6 @@ public class Constants {
             .encoderResolution(
                     GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_SWINGARM_POD
             )
-            .customEncoderResolution(13.26291192)
             .forwardEncoderDirection(GoBildaPinpointDriver.EncoderDirection.REVERSED)
             .strafeEncoderDirection(GoBildaPinpointDriver.EncoderDirection.FORWARD);
 
@@ -47,9 +46,9 @@ public class Constants {
             0.95,
             0.1,
             0.1,
-            0.007,
+            0.004,
             50,
-            6.8,
+            1.7,
             10,
             1
     );
