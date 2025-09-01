@@ -28,6 +28,7 @@ public abstract class Pedro {
     public static void createFollower(Pose startingPose){
         follower=Constants.createFollower(Components.getHardwareMap());
         follower.setStartingPose(startingPose);
+        follower.update();
         getPose = new Components.CachedReader<>(
                 ()->{follower.updatePose(); return follower.getPose();},
                 1
