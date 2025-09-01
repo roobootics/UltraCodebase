@@ -20,10 +20,7 @@ public abstract class Pedro {
         });
     }
     public static Follower follower;
-    private final static LambdaInterfaces.ReturningFunc<Pose> getPose = new Components.CachedReader<>(
-            ()->{follower.updatePose(); return follower.getPose();},
-            1
-    )::cachedRead;
+    private static LambdaInterfaces.ReturningFunc<Pose> getPose;
 
     public static Pose getPose(){
         return getPose.call();
@@ -31,6 +28,10 @@ public abstract class Pedro {
     public static void createFollower(Pose startingPose){
         follower=Constants.createFollower(Components.getHardwareMap());
         follower.setStartingPose(startingPose);
+        getPose = new Components.CachedReader<>(
+                ()->{follower.updatePose(); return follower.getPose();},
+                1
+        )::cachedRead;
     }
     public static Commands.RunResettingLoop updateCommand(){
         return new Commands.RunResettingLoop(new Commands.InstantCommand(follower::update));
