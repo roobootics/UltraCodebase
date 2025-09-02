@@ -42,6 +42,7 @@ import org.firstinspires.ftc.teamcode.presets.PresetControl.ServoControl;
 import org.firstinspires.ftc.teamcode.presets.TimeBasedLocalizers;
 
 public abstract class Components {
+    private static PartsConfig config;
     private static HardwareMap hardwareMap;
     public static HardwareMap getHardwareMap(){
         return hardwareMap;
@@ -85,20 +86,21 @@ public abstract class Components {
             }
         }
     }
+    public interface PartsConfig{
+        void init();
+    }
     public static class CachedReader<E>{
         //Allows for the optimized reading of values. The return of a read is cached and re-returned every time the read is called, until the cache is cleared so fresh values can be obtained.
-        private static final ArrayList<CachedReader<?>> readers = new ArrayList<>(); //Contains all instances
         private final ReturningFunc<E> read;
-        private int resetCacheCounter = 0;
+        private static int resetCacheCounter = 0;
         private final int resetCacheLoopInterval; //If this is set to n, the cache is reset every nth iteration.
         private E storedReadValue = null;
         public CachedReader(ReturningFunc<E> read, int resetCacheLoopInterval){
             this.read=read;
             this.resetCacheLoopInterval = resetCacheLoopInterval;
-            readers.add(this);
         }
         public E cachedRead(){
-            if (Objects.isNull(storedReadValue)){
+            if (Objects.isNull(storedReadValue) || resetCacheCounter%resetCacheLoopInterval==0){
                 storedReadValue=read.call();
             }
             return storedReadValue;
@@ -107,26 +109,29 @@ public abstract class Components {
             resetCacheCounter=0;
             storedReadValue=null;
         }
-        protected static void resetAllCaches(){
-            for (CachedReader<?> reader : readers){
-                reader.resetCacheCounter+=1;
-                if (reader.resetCacheCounter>= reader.resetCacheLoopInterval){
-                    reader.resetCache();
-                }
+        protected static void updateResetAllCaches(){
+            if (resetCacheCounter<1000){
+                resetCacheCounter+=1;
+            }
+            else{
+                resetCacheCounter=1;
             }
         }
     }
     @Target(ElementType.METHOD)
     public @interface Actuate{} //Used to denote methods that actually move a part, like setPower or setPosition
-    public static void initialize(HardwareMap hardwareMap, Telemetry telemetry){ //Method to initialize hardwareMap and telemetry.
+    public static void initialize(HardwareMap hardwareMap, Telemetry telemetry, PartsConfig config, boolean alwaysReInit){ //Method to initialize hardwareMap and telemetry.
         Components.hardwareMap=hardwareMap;
         Components.telemetry=telemetry;
         timer.reset(); //Static variables are preserved between runs, so timer needs to be reset
-        actuators.clear(); //Static variables are preserved between runs, so its better for actuators to be cleared
         telemetryOutput.clear();
         prevTelemetryOutput.clear();
         executor.clearCommands();
-        CachedReader.readers.clear();
+        if (Objects.isNull(Components.config) || alwaysReInit || config.getClass()!=Components.config.getClass()){
+            actuators.clear();
+            Components.config=config;
+            config.init();
+        }
     }
     public abstract static class ControlFunction<E extends Actuator<?>>{ //The subclasses of this are methods that are called to control actuators and get them to the target, such as PID or motion profiles. Each function works with a specific type of actuator. Multiple can run at once
         protected E parentActuator; //Each function has access to the actuator it runs on
@@ -322,7 +327,7 @@ public abstract class Components {
         public void unlockTargetState(){
             targetStateUnlocked=true;
         }
-        protected void resetCurrentPositions(){
+        protected void resetCurrentPositionCaches(){
             resetCurrentPositionCaches.call();
         }
         public void setKeyPositions(String[] keyPositionKeys, double[] keyPositionValues){
@@ -540,7 +545,7 @@ public abstract class Components {
                     part.setPower(power);
                     powers.put(name,power);
                     if (getTimeBasedLocalization()){ //If current position is calculated by time, it needs to be updated everytime the actuator moves
-                        resetCurrentPositions();
+                        resetCurrentPositionCaches();
                         getCurrentPosition(name);
                     }
                     setNewActuation();
@@ -709,6 +714,7 @@ public abstract class Components {
                 part.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
                 part.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             }
+            resetCurrentPositionCaches();
         }
 
         public void setZeroPowerFloat() {
@@ -830,7 +836,7 @@ public abstract class Components {
                 currCommandedPos=position;
                 for (Servo part:parts.values()){part.setPosition(setPositionConversion.apply(position));}
                 if (getTimeBasedLocalization()){
-                    resetCurrentPositions();
+                    resetCurrentPositionCaches();
                     getCurrentPosition();
                 }
                 setNewActuation();

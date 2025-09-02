@@ -22,7 +22,6 @@ import java.util.stream.Collectors;
 
 public abstract class Commands { //Command-based system
     public static final ParallelCommandExecutor executor=new ParallelCommandExecutor(); //This runs Commands
-    private static final HashMap<String, Double> initialActuatorTargets = new HashMap<>();
     public abstract static class Command { //Base class for any command
         private boolean isBusy = false; //Indicates whether the command is active or not
         private boolean isStart = true; //Commands know if they've just started running or not
@@ -222,7 +221,7 @@ public abstract class Commands { //Command-based system
         protected boolean runProcedure() {
             if (actuatorsCommanded.size()<actuators.size()) {
                 for (String key : actuators.keySet()) {
-                    if (Objects.requireNonNull(actuators.get(key)).getTarget()!=Objects.requireNonNull(initialActuatorTargets.get(key)) && !actuatorsCommanded.containsKey(key)) {
+                    if (Objects.requireNonNull(actuators.get(key)).getTarget() != 0 && !actuatorsCommanded.containsKey(key)) {
                         Objects.requireNonNull(actuators.get(key)).switchControl(Objects.requireNonNull(actuators.get(key)).getDefaultControlKey());
                         actuatorsCommanded.put(key, true);
                     }
@@ -781,10 +780,12 @@ public abstract class Commands { //Command-based system
     public abstract static class PathCommand<E> extends Command { //Command for autonomous pathing. Must be subclassed to create an implementation for a specific autonomous library. Parameterized to the actual path object it is based off of.
         private final ReturningFunc<E> buildPath;
         public static boolean buildPathOnInit=false;
+        private boolean constructPathOnRuntime=true;
         private E path; //Stores the path this command follows. For RR it would be a TrajectoryCommand, for Pedro it would be a PathChain
         public PathCommand(ReturningFunc<E> buildPath) {
             this.buildPath = buildPath;
             if (buildPathOnInit){
+                constructPathOnRuntime=false;
                 path=buildPath.call();
             }
         }
@@ -792,7 +793,7 @@ public abstract class Commands { //Command-based system
         protected boolean runProcedure() {
             if (isStart()) {
                 preBuild();
-                if (Objects.isNull(path)){
+                if (constructPathOnRuntime){
                     path = buildPath.call(); //Path is built when the command needs to run (useful for RoadRunner)
                 }
             }
@@ -808,6 +809,7 @@ public abstract class Commands { //Command-based system
         }
         public void buildPath(){
             path=buildPath.call();
+            constructPathOnRuntime=false;
         }
     }
 
@@ -1033,7 +1035,6 @@ public abstract class Commands { //Command-based system
         private ArrayList<Command> commands = new ArrayList<>();
         private final ArrayList<Command> commandsToAdd = new ArrayList<>();
         private final ArrayList<Command> commandsToRemove = new ArrayList<>();
-        private boolean isStartOfProgram = true;
         private Procedure writeToTelemetry = ()->{};
         private ParallelCommandExecutor(){
         }
@@ -1050,13 +1051,6 @@ public abstract class Commands { //Command-based system
             this.writeToTelemetry=procedure;
         }
         public void runOnce(){
-            if (isStartOfProgram){
-                initialActuatorTargets.clear();
-                for (String key:actuators.keySet()){
-                    initialActuatorTargets.put(key, Objects.requireNonNull(actuators.get(key)).getTarget());
-                }
-                isStartOfProgram=false;
-            }
             this.commands.addAll(commandsToAdd);
             this.commands.removeAll(commandsToRemove);
             commandsToAdd.clear();
@@ -1073,7 +1067,7 @@ public abstract class Commands { //Command-based system
                 actuator.runControl();
                 actuator.resetNewTarget(); actuator.resetNewActuation();
             }
-            Components.CachedReader.resetAllCaches();
+            Components.CachedReader.updateResetAllCaches();
             writeToTelemetry.call();
             updateTelemetry();
         }
