@@ -780,15 +780,21 @@ public abstract class Commands { //Command-based system
 
     public abstract static class PathCommand<E> extends Command { //Command for autonomous pathing. Must be subclassed to create an implementation for a specific autonomous library. Parameterized to the actual path object it is based off of.
         private final ReturningFunc<E> buildPath;
+        public static boolean buildPathOnInit=false;
         private E path; //Stores the path this command follows. For RR it would be a TrajectoryCommand, for Pedro it would be a PathChain
         public PathCommand(ReturningFunc<E> buildPath) {
             this.buildPath = buildPath;
+            if (buildPathOnInit){
+                path=buildPath.call();
+            }
         }
         @Override
         protected boolean runProcedure() {
             if (isStart()) {
                 preBuild();
-                path = buildPath.call(); //Path is built when the command needs to run (useful for RoadRunner)
+                if (Objects.isNull(path)){
+                    path = buildPath.call(); //Path is built when the command needs to run (useful for RoadRunner)
+                }
             }
             return followPath();
         }
@@ -799,6 +805,9 @@ public abstract class Commands { //Command-based system
         } //Here, one can code anything that must occur right before the path is built.
         public E getPath(){
             return path;
+        }
+        public void buildPath(){
+            path=buildPath.call();
         }
     }
 
