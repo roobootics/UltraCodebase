@@ -507,7 +507,7 @@ public abstract class Components {
     }
     //Each of the subclasses of Actuator will have some generic constructors and some constructors where information is preset.
     public abstract static class CRActuator<E extends DcMotorSimple> extends Actuator<E>{ //Type of Actuator that works for continuous rotation parts, like DcMotorEx and CRServo
-        private final HashMap<String,Double> powers = new HashMap<>(); //Stores the powers each of the parts are set to. Synchronized parts can have different powers because the load on one may be larger than on the other
+        //private final HashMap<String,Double> powers = new HashMap<>(); //Stores the powers each of the parts are set to. Synchronized parts can have different powers because the load on one may be larger than on the other
         private final ReturningFunc<Double> maxPowerFunc;
         private final ReturningFunc<Double> minPowerFunc;
         //Max and min power boundaries
@@ -519,7 +519,6 @@ public abstract class Components {
             this.minPowerFunc=minPowerFunc;
             for (int i=0;i<names.length;i++){
                 Objects.requireNonNull(parts.get(names[i])).setDirection(directions[i]);
-                powers.put(names[i],0.0);
             }
             this.setTarget(0);
         }
@@ -546,7 +545,6 @@ public abstract class Components {
                 assert part != null;
                 if (Math.abs(power-part.getPower())>0.03) {
                     part.setPower(power);
-                    powers.put(name,power);
                     if (getTimeBasedLocalization()){ //If current position is calculated by time, it needs to be updated everytime the actuator moves
                         resetCurrentPositionCaches();
                         getCurrentPosition(name);
@@ -564,7 +562,7 @@ public abstract class Components {
             }
         }
         public double getPower(String name){
-            return Objects.requireNonNull(powers.get(name));
+            return getPart("name").getPower();
         }
         public double getPower(){
             double avg=0;
@@ -592,29 +590,29 @@ public abstract class Components {
         }
         public SetPowerCommand togglePowerCommand(double power1, double power2){
             return new SetPowerCommand(()->{
-                if (Objects.requireNonNull(powers.get(partNames[0]))==power1) return power2; else if (Objects.requireNonNull(powers.get(partNames[0]))==power2) return power1; else return Objects.requireNonNull(powers.get(partNames[0]));
+                if (getPart(partNames[0]).getPower()==power1) return power2; else if (getPart(partNames[0]).getPower()==power2) return power1; else return getPart(partNames[0]).getPower();
             });
         }
         public SetPowerCommand upwardFSMPowerCommand(double...powersList){
             Arrays.sort(powersList);
             return setPowerCommand(()->{
                 for (double power: powersList){
-                    if (Objects.requireNonNull(powers.get(partNames[0]))<power){
+                    if (getPart(partNames[0]).getPower()<power){
                         return power;
                     }
                 }
-                return Objects.requireNonNull(powers.get(partNames[0]));
+                return getPart(partNames[0]).getPower();
             });
         }
         public SetPowerCommand downwardFSMPowerCommand(double...powersList){
             Arrays.sort(powersList);
             return setPowerCommand(()->{
                 for (int i = powersList.length-1; i>=0; i--){
-                    if (Objects.requireNonNull(powers.get(partNames[0]))>powersList[i]){
+                    if (getPart(partNames[0]).getPower()>powersList[i]){
                         return powersList[i];
                     }
                 }
-                return Objects.requireNonNull(powers.get(partNames[0]));
+                return getPart(partNames[0]).getPower();
             });
         }
         public RunResettingLoop triggeredSetPowerCommand(Condition condition, ReturningFunc<Double> powerFunc){
@@ -627,7 +625,7 @@ public abstract class Components {
             return new RunResettingLoop(new PressTrigger(new IfThen(condition, new SetPowerCommand(power))));
         }
         public RunResettingLoop triggeredDynamicPowerCommand(Condition upCondition, Condition downCondition, double change){
-            return new RunResettingLoop(new ConditionalCommand(new IfThen(upCondition, setPowerCommand(()->(Objects.requireNonNull(powers.get(partNames[0]))+change))),new IfThen(downCondition, setPowerCommand(()->(Objects.requireNonNull(powers.get(partNames[0]))-change)))));
+            return new RunResettingLoop(new ConditionalCommand(new IfThen(upCondition, setPowerCommand(()->(getPart(partNames[0]).getPower()+change))),new IfThen(downCondition, setPowerCommand(()->(getPart(partNames[0]).getPower()-change)))));
         }
         public RunResettingLoop triggeredTogglePowerCommand(Condition condition, double power1, double power2){
             return new RunResettingLoop(new PressTrigger(new IfThen(condition, togglePowerCommand(power1,power2))));
