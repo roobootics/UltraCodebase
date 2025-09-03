@@ -91,13 +91,15 @@ public abstract class Components {
     }
     public static class CachedReader<E>{
         //Allows for the optimized reading of values. The return of a read is cached and re-returned every time the read is called, until the cache is cleared so fresh values can be obtained.
+        public static final ArrayList<CachedReader<?>> readers = new ArrayList<>(); //Stores all CachedReaders.
         private final ReturningFunc<E> read;
-        private static int resetCacheCounter = 0;
+        private int resetCacheCounter = 0;
         private final int resetCacheLoopInterval; //If this is set to n, the cache is reset every nth iteration.
         private E storedReadValue = null;
         public CachedReader(ReturningFunc<E> read, int resetCacheLoopInterval){
             this.read=read;
             this.resetCacheLoopInterval = resetCacheLoopInterval;
+            readers.add(this);
         }
         public E cachedRead(){
             if (Objects.isNull(storedReadValue) || resetCacheCounter%resetCacheLoopInterval==0){
@@ -110,11 +112,12 @@ public abstract class Components {
             storedReadValue=null;
         }
         protected static void updateResetAllCaches(){
-            if (resetCacheCounter<1000){
-                resetCacheCounter+=1;
-            }
-            else{
-                resetCacheCounter=1;
+            for (CachedReader<?> reader : readers){
+                reader.resetCacheCounter+=1;
+                if (reader.resetCacheCounter> reader.resetCacheLoopInterval){
+                    reader.resetCacheCounter=0;
+                    reader.resetCache();
+                }
             }
         }
     }
