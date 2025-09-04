@@ -6,12 +6,13 @@ import org.firstinspires.ftc.teamcode.base.Components.Actuator;
 import org.firstinspires.ftc.teamcode.base.Components.BotServo;
 import org.firstinspires.ftc.teamcode.base.Components.CRActuator;
 import org.firstinspires.ftc.teamcode.base.Components.ControlFunction;
-import org.firstinspires.ftc.teamcode.base.LambdaInterfaces.ReturningFunc;
+
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 public abstract class PresetControl { //Holds control functions that actuators can use. Note that more control functions, like other types of motion profiling, can be coded and used.
     public static class PIDF<E extends CRActuator<?>> extends ControlFunction<E>{
@@ -20,8 +21,8 @@ public abstract class PresetControl { //Holds control functions that actuators c
             public double kI;
             public double kD;
             public double kF;
-            public ReturningFunc<Double> feedForwardFunc; //From my understanding, feedforward is just a custom way to boost power based on a certain factor. For example, it could be used to counter gravity. feedForwardFunc returns a certain metric, and that will be multiplied by kF.
-            public PIDFConstants(double kP, double kI, double kD, double kF, ReturningFunc<Double> feedForwardFunc){
+            public Supplier<Double> feedForwardFunc; //From my understanding, feedforward is just a custom way to boost power based on a certain factor. For example, it could be used to counter gravity. feedForwardFunc returns a certain metric, and that will be multiplied by kF.
+            public PIDFConstants(double kP, double kI, double kD, double kF, Supplier<Double> feedForwardFunc){
                 this.kP=kP;
                 this.kI=kI;
                 this.kD=kD;
@@ -43,7 +44,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
         private double prevLoopTime;
         private double integralIntervalTime;
         private final ArrayList<PIDFConstants> constants;
-        private ReturningFunc<Integer> shouldApplyDerivative = ()->(1);
+        private Supplier<Integer> shouldApplyDerivative = ()->(1);
         public PIDF(PIDFConstants...constants){ //The PIDF can accept multiple sets of coefficients, since if two synchronized CR components have different loads, they will need to produce different power outputs
             this.constants=new ArrayList<>(Arrays.asList(constants));
         }
@@ -95,7 +96,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
                 }
                 double dTerm;
                 if (previousFiveLoopTimes.get(i).size()<5){
-                    dTerm=shouldApplyDerivative.call() * ((error) - previousErrors[i])/(time-prevLoopTime);
+                    dTerm=shouldApplyDerivative.get() * ((error) - previousErrors[i])/(time-prevLoopTime);
                 }
                 else{
                     ArrayList<Double> prev5Errors=previousFiveErrors.get(i);
@@ -105,13 +106,13 @@ public abstract class PresetControl { //Holds control functions that actuators c
                         dtAvg+=dt;
                     }
                     dtAvg=dtAvg/5;
-                    dTerm=shouldApplyDerivative.call() * (-prev5Errors.get(4)+8*prev5Errors.get(3)-8*prev5Errors.get(1)+prev5Errors.get(0))/(12*dtAvg);
+                    dTerm=shouldApplyDerivative.get() * (-prev5Errors.get(4)+8*prev5Errors.get(3)-8*prev5Errors.get(1)+prev5Errors.get(0))/(12*dtAvg);
                 }
                 parentActuator.setPower(
                         constants.get(i).kP * (error) +
                                 constants.get(i).kI * integralSums[i] * (time-prevLoopTime) +
                                 constants.get(i).kD * dTerm +
-                                constants.get(i).kF * constants.get(i).feedForwardFunc.call(),
+                                constants.get(i).kF * constants.get(i).feedForwardFunc.get(),
                         parentActuator.partNames[i]
                 );
                 previousErrors[i]=error;
@@ -329,18 +330,18 @@ public abstract class PresetControl { //Holds control functions that actuators c
         }
     }
     public static class CRBangBangControl<E extends CRActuator<?>> extends ControlFunction<E>{ //Likely will be used to get CRServos to their targets if they have no encoders with them
-        private final ReturningFunc<Double> powerFunc; //This control function moves the CRActuator to the target at a given power, which can change. That is stored here.
+        private final Supplier<Double> powerFunc; //This control function moves the CRActuator to the target at a given power, which can change. That is stored here.
         public CRBangBangControl(double power){
             this.powerFunc=()->(power);
         }
-        public CRBangBangControl(ReturningFunc<Double> powerFunc){
+        public CRBangBangControl(Supplier<Double> powerFunc){
             this.powerFunc=powerFunc;
         }
         @Override
         protected void runProcedure() {
             double currentPosition = parentActuator.getCurrentPosition();
             if (Math.abs(parentActuator.getInstantTarget()-currentPosition)>parentActuator.getErrorTol()){
-                parentActuator.setPower(powerFunc.call()*Math.signum(parentActuator.getInstantTarget()-currentPosition));
+                parentActuator.setPower(powerFunc.get()*Math.signum(parentActuator.getInstantTarget()-currentPosition));
             }
         }
     }

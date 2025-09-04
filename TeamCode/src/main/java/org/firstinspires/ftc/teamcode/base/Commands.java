@@ -6,15 +6,14 @@ import static org.firstinspires.ftc.teamcode.base.Components.timer;
 import static org.firstinspires.ftc.teamcode.base.Components.BotMotor;
 import static org.firstinspires.ftc.teamcode.base.Components.updateTelemetry;
 
-import org.firstinspires.ftc.teamcode.base.LambdaInterfaces.Procedure;
-import org.firstinspires.ftc.teamcode.base.LambdaInterfaces.ReturningFunc;
+import java.lang.Runnable;
+import java.util.function.Supplier;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Objects;
-import org.firstinspires.ftc.teamcode.base.LambdaInterfaces.Condition;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -92,43 +91,43 @@ public abstract class Commands { //Command-based system
     }
 
     public static class InstantCommand extends Command { //Command that completes in one loop iteration
-        private final Procedure procedure;
+        private final Runnable procedure;
 
-        public InstantCommand(Procedure procedure) {
+        public InstantCommand(Runnable procedure) {
             this.procedure = procedure;
         }
 
         @Override
         public boolean runProcedure() {
-            procedure.call();
+            procedure.run();
             return false;
         }
     }
 
     public static class ContinuousCommand extends Command { //Command that constantly runs the same way each loop iteration
-        private final Procedure procedure;
+        private final Runnable procedure;
 
-        public ContinuousCommand(Procedure procedure) {
+        public ContinuousCommand(Runnable procedure) {
             this.procedure = procedure;
         }
 
         @Override
         public boolean runProcedure() {
-            procedure.call();
+            procedure.run();
             return true;
         }
     }
 
     public static class LambdaCommand extends Command { //This allows one to create a Command without making it its own class
-        private final ReturningFunc<Boolean> command;
+        private final Supplier<Boolean> command;
 
-        public LambdaCommand(ReturningFunc<Boolean> command) {
+        public LambdaCommand(Supplier<Boolean> command) {
             this.command = command;
         }
 
         @Override
         public boolean runProcedure() {
-            return command.call();
+            return command.get();
         }
     }
 
@@ -235,17 +234,17 @@ public abstract class Commands { //Command-based system
 
         }
     }
-    public static class SleepUntilTrue extends Command { //Sleeps until a condition is met or until an optional timeout time is reached
-        private final ReturningFunc<Boolean> condition;
+    public static class SleepUntilTrue extends Command { //Sleeps until a is met or until an optional timeout time is reached
+        private final Supplier<Boolean> condition;
         private final double timeout;
         private double startTime;
 
-        public SleepUntilTrue(ReturningFunc<Boolean> condition, double timeout) {
+        public SleepUntilTrue(Supplier<Boolean> condition, double timeout) {
             this.condition = condition;
             this.timeout = timeout;
         }
 
-        public SleepUntilTrue(ReturningFunc<Boolean> condition) {
+        public SleepUntilTrue(Supplier<Boolean> condition) {
             this.condition = condition;
             this.timeout = Double.POSITIVE_INFINITY;
         }
@@ -255,7 +254,7 @@ public abstract class Commands { //Command-based system
             if (isStart() && timeout != Double.POSITIVE_INFINITY) {
                 startTime = timer.time();
             }
-            return !condition.call() && (timer.time() - startTime) < timeout;
+            return !condition.get() && (timer.time() - startTime) < timeout;
         }
     }
 
@@ -306,11 +305,11 @@ public abstract class Commands { //Command-based system
             command.stop();
         }
     }
-    public static class InterruptOnCondition extends Command{ //Command to run the command passed to it, but interrupt it after a given condition is met
+    public static class InterruptOnCondition extends Command{ //Command to run the command passed to it, but interrupt it after a given Supplier<Boolean> is met
         private final Command command;
         private final SleepUntilTrue sleepCommand;
         private boolean commandEnded=false;
-        public InterruptOnCondition(Condition condition, Command command){
+        public InterruptOnCondition(Supplier<Boolean> condition, Command command){
             this.command=command;
             this.sleepCommand=new SleepUntilTrue(condition);
         }
@@ -414,30 +413,30 @@ public abstract class Commands { //Command-based system
         }
     }
 
-    public static class IfThen { //Holds a condition and a command to be executed if it is met
-        private final ReturningFunc<Boolean> condition;
+    public static class IfThen { //Holds a Supplier<Boolean> and a command to be executed if it is met
+        private final Supplier<Boolean> condition;
         private final Command command;
 
-        public IfThen(ReturningFunc<Boolean> condition, Command command) {
+        public IfThen(Supplier<Boolean> condition, Command command) {
             this.condition = condition;
             this.command = command;
         }
     }
 
-    public static class ConditionalCommand extends Command{ //Executes commands if their respective conditions are met, in an if,else-if,else manner. Only one command can run at a time. If one command's condition stops being met, it will finish, unless another command's condition starts being met, in which case it will stop and switch to that command
-        protected final LinkedHashMap<ReturningFunc<Boolean>, Command> commands = new LinkedHashMap<>();
+    public static class ConditionalCommand extends Command{ //Executes commands if their respective Conditions are met, in an if,else-if,else manner. Only one command can run at a time. If one command's Supplier<Boolean> stops being met, it will finish, unless another command's Supplier<Boolean> starts being met, in which case it will stop and switch to that command
+        protected final LinkedHashMap<Supplier<Boolean>, Command> commands = new LinkedHashMap<>();
         protected Command currentCommand = null;
-        public ConditionalCommand(IfThen... conditionalPairs) {
-            for (IfThen conditionalPair : conditionalPairs) {
-                commands.put(conditionalPair.condition, conditionalPair.command);
+        public ConditionalCommand(IfThen... ConditionalPairs) {
+            for (IfThen ConditionalPair : ConditionalPairs) {
+                commands.put(ConditionalPair.condition, ConditionalPair.command);
             }
         }
 
         @Override
         protected boolean runProcedure() {
             if (isStart()) {
-                for (ReturningFunc<Boolean> condition : commands.keySet()) {
-                    if (condition.call()) {
+                for (Supplier<Boolean> condition : commands.keySet()) {
+                    if (condition.get()) {
                         if (commands.get(condition) != currentCommand) {
                             if (Objects.nonNull(currentCommand)) {
                                 currentCommand.stop();
@@ -451,8 +450,8 @@ public abstract class Commands { //Command-based system
                     }
                 }
             } else {
-                for (ReturningFunc<Boolean> condition : commands.keySet()) {
-                    if (condition.call()) {
+                for (Supplier<Boolean> condition : commands.keySet()) {
+                    if (condition.get()) {
                         if (commands.get(condition) != currentCommand) {
                             currentCommand.stop();
                             currentCommand = commands.get(condition);
@@ -484,20 +483,20 @@ public abstract class Commands { //Command-based system
     }
 
     public static class PersistentConditionalCommand extends PersistentCommand{ //ConditionalCommand, but a command cannot be interrupted
-        protected final LinkedHashMap<ReturningFunc<Boolean>, Command> commands = new LinkedHashMap<>();
+        protected final LinkedHashMap<Supplier<Boolean>, Command> commands = new LinkedHashMap<>();
         protected Command currentCommand = null;
 
-        public PersistentConditionalCommand(IfThen... conditionalPairs) {
-            for (IfThen conditionalPair : conditionalPairs) {
-                commands.put(conditionalPair.condition, conditionalPair.command);
+        public PersistentConditionalCommand(IfThen... ConditionalPairs) {
+            for (IfThen ConditionalPair : ConditionalPairs) {
+                commands.put(ConditionalPair.condition, ConditionalPair.command);
             }
         }
 
         @Override
         protected boolean runProcedure() {
             if (Objects.isNull(currentCommand)) {
-                for (ReturningFunc<Boolean> condition : commands.keySet()) {
-                    if (condition.call()) {
+                for (Supplier<Boolean> condition : commands.keySet()) {
+                    if (condition.get()) {
                         currentCommand = commands.get(condition);
                         assert currentCommand != null;
                         currentCommand.reset();
@@ -526,20 +525,20 @@ public abstract class Commands { //Command-based system
     }
 
     public static class SemiPersistentConditionalCommand extends Command{ //ConditionalCommand, but a command can only be interrupted if the SemiPersistentConditionalCommand is reset()
-        private final LinkedHashMap<ReturningFunc<Boolean>, Command> commands = new LinkedHashMap<>();
+        private final LinkedHashMap<Supplier<Boolean>, Command> commands = new LinkedHashMap<>();
         private Command currentCommand = null;
 
-        public SemiPersistentConditionalCommand(IfThen... conditionalPairs) {
-            for (IfThen conditionalPair : conditionalPairs) {
-                commands.put(conditionalPair.condition, conditionalPair.command);
+        public SemiPersistentConditionalCommand(IfThen... ConditionalPairs) {
+            for (IfThen ConditionalPair : ConditionalPairs) {
+                commands.put(ConditionalPair.condition, ConditionalPair.command);
             }
         }
 
         @Override
         protected boolean runProcedure() {
             if (isStart()) {
-                for (ReturningFunc<Boolean> condition : commands.keySet()) {
-                    if (condition.call()) {
+                for (Supplier<Boolean> condition : commands.keySet()) {
+                    if (condition.get()) {
                         if (commands.get(condition) != currentCommand) {
                             if (Objects.nonNull(currentCommand)) {
                                 currentCommand.stop();
@@ -573,18 +572,18 @@ public abstract class Commands { //Command-based system
         }
     }
 
-    public static class PressTrigger extends ConditionalCommand { //ConditionalCommand, but all conditions are converted into button-presses, such that they will not return 'true' two loop-iterations in a row.
+    public static class PressTrigger extends ConditionalCommand { //ConditionalCommand, but all Conditions are converted into button-presses, such that they will not return 'true' two loop-iterations in a row.
         private final ArrayList<Boolean> isPressed;
-        public PressTrigger(IfThen... conditionalPairs) {
-            super(conditionalPairs);
+        public PressTrigger(IfThen... ConditionalPairs) {
+            super(ConditionalPairs);
             commands.clear();
             isPressed = new ArrayList<>();
-            for (int i = 0; i < conditionalPairs.length; i++) {
+            for (int i = 0; i < ConditionalPairs.length; i++) {
                 int finalI = i;
                 isPressed.add(false);
                 commands.put(
                         () -> {
-                            if (conditionalPairs[finalI].condition.call()) {
+                            if (ConditionalPairs[finalI].condition.get()) {
                                 if (!isPressed.get(finalI)){
                                     isPressed.set(finalI,true);
                                     return true;
@@ -597,7 +596,7 @@ public abstract class Commands { //Command-based system
                                 return false;
                             }
                         },
-                        conditionalPairs[i].command
+                        ConditionalPairs[i].command
                 );
             }
         }
@@ -605,16 +604,16 @@ public abstract class Commands { //Command-based system
 
     public static class PersistentPressTrigger extends PersistentConditionalCommand { //PressTrigger but persistent
         private final ArrayList<Boolean> isPressed;
-        public PersistentPressTrigger(IfThen... conditionalPairs) {
-            super(conditionalPairs);
+        public PersistentPressTrigger(IfThen... ConditionalPairs) {
+            super(ConditionalPairs);
             commands.clear();
             isPressed = new ArrayList<>();
-            for (int i = 0; i < conditionalPairs.length; i++) {
+            for (int i = 0; i < ConditionalPairs.length; i++) {
                 int finalI = i;
                 isPressed.add(false);
                 commands.put(
                         () -> {
-                            if (conditionalPairs[finalI].condition.call()) {
+                            if (ConditionalPairs[finalI].condition.get()) {
                                 isPressed.set(finalI,true);
                                 return !isPressed.get(finalI);
                             } else {
@@ -622,7 +621,7 @@ public abstract class Commands { //Command-based system
                                 return false;
                             }
                         },
-                        conditionalPairs[i].command
+                        ConditionalPairs[i].command
                 );
             }
         }
@@ -652,17 +651,17 @@ public abstract class Commands { //Command-based system
             }
         }
     }
-    public static class LoopUntilTrue extends ParallelCommand { //Loops a command until a condition is met, or until an optional timeout is reached
+    public static class LoopUntilTrue extends ParallelCommand { //Loops a command until a Supplier<Boolean> is met, or until an optional timeout is reached
         private double startTime;
-        private final Condition condition;
+        private final Supplier<Boolean> condition;
         private final double timeout;
 
-        public LoopUntilTrue(Condition condition, double timeout, Command... commands) {
+        public LoopUntilTrue(Supplier<Boolean> condition, double timeout, Command... commands) {
             super(commands);
             this.condition = condition;
             this.timeout=timeout;
         }
-        public LoopUntilTrue(Condition condition, Command... commands) {
+        public LoopUntilTrue(Supplier<Boolean> condition, Command... commands) {
             this(condition,Double.POSITIVE_INFINITY,commands);
         }
         @Override
@@ -671,7 +670,7 @@ public abstract class Commands { //Command-based system
                 startTime = timer.time();
                 reset();
             }
-            if (!condition.call() && (timer.time() - startTime) < timeout) {
+            if (!condition.get() && (timer.time() - startTime) < timeout) {
                 for (Command command : commands){
                     command.run();
                 }
@@ -705,17 +704,17 @@ public abstract class Commands { //Command-based system
             }
         }
     }
-    public static class ResetAndLoopUntilTrue extends ParallelCommand { //Loops a command until a condition is met, or until an optional timeout is reached
+    public static class ResetAndLoopUntilTrue extends ParallelCommand { //Loops a command until a Supplier<Boolean> is met, or until an optional timeout is reached
         private double startTime;
-        private final Condition condition;
+        private final Supplier<Boolean> condition;
         private final double timeout;
 
-        public ResetAndLoopUntilTrue(Condition condition, double timeout, Command...commands) {
+        public ResetAndLoopUntilTrue(Supplier<Boolean> condition, double timeout, Command...commands) {
             super(commands);
             this.condition = condition;
             this.timeout=timeout;
         }
-        public ResetAndLoopUntilTrue(Condition condition, Command... commands) {
+        public ResetAndLoopUntilTrue(Supplier<Boolean> condition, Command... commands) {
             this(condition,Double.POSITIVE_INFINITY,commands);
         }
         @Override
@@ -723,7 +722,7 @@ public abstract class Commands { //Command-based system
             if (isStart()) {
                 startTime = timer.time();
             }
-            if (!condition.call() && (timer.time() - startTime) < timeout) {
+            if (!condition.get() && (timer.time() - startTime) < timeout) {
                 reset(); super.runProcedure();
                 return true;
             } else {
@@ -756,13 +755,13 @@ public abstract class Commands { //Command-based system
         }
     }
     public abstract static class SleepUntilPose extends SleepUntilTrue { //Sleeps until the drivetrain and heading get a certain distance from a desired position and heading, or until an optional timeout is reached. Meant to be subclassed depending on the pathing library.
-        public static ReturningFunc<double[]> getPose; //Subclasses assign this to a method that can get the drivetrain position, returning x, y, and heading.
-        public static void setGetPose(ReturningFunc<double[]> getPose){
+        public static Supplier<double[]> getPose; //Subclasses assign this to a method that can get the drivetrain position, returning x, y, and heading.
+        public static void setGetPose(Supplier<double[]> getPose){
             SleepUntilPose.getPose=getPose;
         }
         public SleepUntilPose(double x, double y, double heading, double poseDistance, double headingDistance, double timeout) {
             super(() -> {
-                double[] pose = getPose.call();
+                double[] pose = getPose.get();
                 return Math.sqrt((x - pose[0]) * (x - pose[0]) + (y - pose[1]) * (y - pose[1])) < poseDistance &&
                         Math.abs(heading - pose[2]) < headingDistance;
             }, timeout);
@@ -770,7 +769,7 @@ public abstract class Commands { //Command-based system
 
         public SleepUntilPose(double x, double y, double heading, double poseDistance, double headingDistance) {
             super(() -> {
-                double[] pose = getPose.call();
+                double[] pose = getPose.get();
                 return Math.sqrt((x - pose[0]) * (x - pose[0]) + (y - pose[1]) * (y - pose[1])) < poseDistance &&
                         Math.abs(heading - pose[2]) < headingDistance;
             });
@@ -778,15 +777,15 @@ public abstract class Commands { //Command-based system
     }
 
     public abstract static class PathCommand<E> extends Command { //Command for autonomous pathing. Must be subclassed to create an implementation for a specific autonomous library. Parameterized to the actual path object it is based off of.
-        private final ReturningFunc<E> buildPath;
+        private final Supplier<E> buildPath;
         public static boolean buildPathOnInit=false;
         private boolean constructPathOnRuntime=true;
         private E path; //Stores the path this command follows. For RR it would be a TrajectoryCommand, for Pedro it would be a PathChain
-        public PathCommand(ReturningFunc<E> buildPath) {
+        public PathCommand(Supplier<E> buildPath) {
             this.buildPath = buildPath;
             if (buildPathOnInit){
                 constructPathOnRuntime=false;
-                path=buildPath.call();
+                path=buildPath.get();
             }
         }
         @Override
@@ -794,7 +793,7 @@ public abstract class Commands { //Command-based system
             if (isStart()) {
                 preBuild();
                 if (constructPathOnRuntime){
-                    path = buildPath.call(); //Path is built when the command needs to run (useful for RoadRunner)
+                    path = buildPath.get(); //Path is built when the command needs to run (useful for RoadRunner)
                 }
             }
             return followPath();
@@ -808,19 +807,19 @@ public abstract class Commands { //Command-based system
             return path;
         }
         public void buildPath(){
-            path=buildPath.call();
+            path=buildPath.get();
             constructPathOnRuntime=false;
         }
     }
 
     public static class RobotCentricMecanumCommand extends Command { //Command for robot-centric TeleOp drivetrain control
-        private final ReturningFunc<Double> xFun;
-        private final ReturningFunc<Double> yFun;
-        private final ReturningFunc<Double> rxFun;
-        private final ReturningFunc<Double> slowDownFun;
+        private final Supplier<Double> xFun;
+        private final Supplier<Double> yFun;
+        private final Supplier<Double> rxFun;
+        private final Supplier<Double> slowDownFun;
         private final BotMotor[] motors;
 
-        public RobotCentricMecanumCommand(BotMotor[] motors, ReturningFunc<Double> xFun, ReturningFunc<Double> yFun, ReturningFunc<Double> rxFun, ReturningFunc<Double> slowDownFun) {
+        public RobotCentricMecanumCommand(BotMotor[] motors, Supplier<Double> xFun, Supplier<Double> yFun, Supplier<Double> rxFun, Supplier<Double> slowDownFun) {
             this.xFun = xFun;
             this.yFun = yFun;
             this.rxFun = rxFun;
@@ -828,15 +827,15 @@ public abstract class Commands { //Command-based system
             this.motors = motors;
         }
 
-        public RobotCentricMecanumCommand(BotMotor[] motors, ReturningFunc<Double> xFun, ReturningFunc<Double> yFun, ReturningFunc<Double> rxFun) {
+        public RobotCentricMecanumCommand(BotMotor[] motors, Supplier<Double> xFun, Supplier<Double> yFun, Supplier<Double> rxFun) {
             this(motors, xFun, yFun, rxFun, ()->(1.0));
         }
 
         @Override
         public boolean runProcedure() {
-            double y = -yFun.call();
-            double x = xFun.call();
-            double rx = -rxFun.call();
+            double y = -yFun.get();
+            double x = xFun.get();
+            double rx = -rxFun.get();
 
             double botHeading = 0;
 
@@ -846,7 +845,7 @@ public abstract class Commands { //Command-based system
             rotX = rotX * 1.1;  // Counteract imperfect strafing
 
             double denominator = Math.max(Math.abs(rotY) + Math.abs(rotX) + Math.abs(rx), 1);
-            double slowDownAmount=slowDownFun.call();
+            double slowDownAmount=slowDownFun.get();
             double frontLeftPower = slowDownAmount*(rotY + rotX + rx) / denominator;
             double backLeftPower = slowDownAmount*(rotY - rotX + rx) / denominator;
             double frontRightPower = slowDownAmount*(rotY - rotX - rx) / denominator;
@@ -861,14 +860,14 @@ public abstract class Commands { //Command-based system
     }
 
     public static class FieldCentricMecanumCommand extends Command { //Command for field-centric TeleOp drivetrain control
-        private final ReturningFunc<Double> xFun;
-        private final ReturningFunc<Double> yFun;
-        private final ReturningFunc<Double> rxFun;
-        private final ReturningFunc<Double> slowDownFun;
+        private final Supplier<Double> xFun;
+        private final Supplier<Double> yFun;
+        private final Supplier<Double> rxFun;
+        private final Supplier<Double> slowDownFun;
         private final BotMotor[] motors;
-        private final ReturningFunc<Double> getHeading;
+        private final Supplier<Double> getHeading;
 
-        public FieldCentricMecanumCommand(BotMotor[] motors, ReturningFunc<Double> getHeading, int imuPollingRate, ReturningFunc<Double> xFun, ReturningFunc<Double> yFun, ReturningFunc<Double> rxFun, ReturningFunc<Double> slowDownFun) {
+        public FieldCentricMecanumCommand(BotMotor[] motors, Supplier<Double> getHeading, int imuPollingRate, Supplier<Double> xFun, Supplier<Double> yFun, Supplier<Double> rxFun, Supplier<Double> slowDownFun) {
             this.xFun = xFun;
             this.yFun = yFun;
             this.rxFun = rxFun;
@@ -877,17 +876,17 @@ public abstract class Commands { //Command-based system
             this.getHeading = new Components.CachedReader<>(getHeading,imuPollingRate)::cachedRead;
         }
 
-        public FieldCentricMecanumCommand(BotMotor[] motors, ReturningFunc<Double> getHeading, int imuPollingRate, ReturningFunc<Double> xFun, ReturningFunc<Double> yFun, ReturningFunc<Double> rxFun) {
+        public FieldCentricMecanumCommand(BotMotor[] motors, Supplier<Double> getHeading, int imuPollingRate, Supplier<Double> xFun, Supplier<Double> yFun, Supplier<Double> rxFun) {
             this(motors, getHeading, imuPollingRate, xFun, yFun, rxFun, ()->(1.0));
         }
 
         @Override
         public boolean runProcedure() {
-            double y = -yFun.call();
-            double x = xFun.call();
-            double rx = -rxFun.call();
+            double y = -yFun.get();
+            double x = xFun.get();
+            double rx = -rxFun.get();
 
-            double botHeading = getHeading.call();
+            double botHeading = getHeading.get();
 
             double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
             double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
@@ -895,7 +894,7 @@ public abstract class Commands { //Command-based system
             rotX = rotX * 1.1;  // Counteract imperfect strafing
 
             double denominator = Math.max(Math.abs(rotY) + Math.abs(rotX) + Math.abs(rx), 1);
-            double slowDownAmount=slowDownFun.call();
+            double slowDownAmount=slowDownFun.get();
             double frontLeftPower = slowDownAmount*(rotY + rotX + rx) / denominator;
             double backLeftPower = slowDownAmount*(rotY - rotX + rx) / denominator;
             double frontRightPower = slowDownAmount*(rotY - rotX - rx) / denominator;
@@ -908,7 +907,7 @@ public abstract class Commands { //Command-based system
             return true;
         }
     }
-    public static RunResettingLoop triggeredToggleCommand(Condition condition, Command command1, Command command2){
+    public static RunResettingLoop triggeredToggleCommand(Supplier<Boolean> condition, Command command1, Command command2){
         AtomicBoolean state = new AtomicBoolean(true);
         command1 = new SequentialCommand(new InstantCommand(()->state.set(!state.get())), command1);
         command2 = new SequentialCommand(new InstantCommand(()->state.set(!state.get())), command2);
@@ -921,7 +920,7 @@ public abstract class Commands { //Command-based system
                 )
         ));
     }
-    public static RunResettingLoop triggeredFSMCommand(Condition upCondition, Condition downCondition, int startingState, Command...commands){
+    public static RunResettingLoop triggeredFSMCommand(Supplier<Boolean> upCondition, Supplier<Boolean> downCondition, int startingState, Command...commands){
         if (startingState>commands.length){
             startingState= commands.length;
         }
@@ -964,7 +963,7 @@ public abstract class Commands { //Command-based system
                 )
         ));
     }
-    public static RunResettingLoop triggeredCycleCommand(Condition condition, Command...commands){
+    public static RunResettingLoop triggeredCycleCommand(Supplier<Boolean> condition, Command...commands){
         AtomicInteger state = new AtomicInteger(0);
         IfThen[] ifThens=new IfThen[commands.length];
         for (int i=0;i< ifThens.length;i++){
@@ -987,7 +986,7 @@ public abstract class Commands { //Command-based system
                 )
         ));
     }
-    public static RunResettingLoop triggeredDynamicCommand(Condition upCondition, Condition downCondition, Command command1, Command command2){
+    public static RunResettingLoop triggeredDynamicCommand(Supplier<Boolean> upCondition, Supplier<Boolean> downCondition, Command command1, Command command2){
         return new RunResettingLoop(
                 new ConditionalCommand(
                         new IfThen(
@@ -1035,7 +1034,7 @@ public abstract class Commands { //Command-based system
         private ArrayList<Command> commands = new ArrayList<>();
         private final ArrayList<Command> commandsToAdd = new ArrayList<>();
         private final ArrayList<Command> commandsToRemove = new ArrayList<>();
-        private Procedure writeToTelemetry = ()->{};
+        private Runnable writeToTelemetry = ()->{};
         private ParallelCommandExecutor(){
         }
         public void setCommands(Command...commandGroups){
@@ -1047,7 +1046,7 @@ public abstract class Commands { //Command-based system
         public ArrayList<Command> getCommands(){
             return new ArrayList<>(this.commands);
         }
-        public void setWriteToTelemetry(Procedure procedure){
+        public void setWriteToTelemetry(Runnable procedure){
             this.writeToTelemetry=procedure;
         }
         public void runOnce(){
@@ -1070,11 +1069,11 @@ public abstract class Commands { //Command-based system
                 actuator.resetNewTarget(); actuator.resetNewActuation();
             }
             Components.CachedReader.updateResetAllCaches();
-            writeToTelemetry.call();
+            writeToTelemetry.run();
             updateTelemetry();
         }
-        public void runLoop(Condition condition){
-            while (condition.call()){
+        public void runLoop(Supplier<Boolean> condition){
+            while (condition.get()){
                 runOnce();
             }
             stop();

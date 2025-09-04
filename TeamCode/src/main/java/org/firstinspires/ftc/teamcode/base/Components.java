@@ -34,9 +34,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
-import org.firstinspires.ftc.teamcode.base.LambdaInterfaces.ReturningFunc;
-import org.firstinspires.ftc.teamcode.base.LambdaInterfaces.Condition;
 
 import org.firstinspires.ftc.teamcode.presets.PresetControl.ServoControl;
 import org.firstinspires.ftc.teamcode.presets.TimeBasedLocalizers;
@@ -92,18 +91,18 @@ public abstract class Components {
     public static class CachedReader<E>{
         //Allows for the optimized reading of values. The return of a read is cached and re-returned every time the read is called, until the cache is cleared so fresh values can be obtained.
         public static final ArrayList<CachedReader<?>> readers = new ArrayList<>(); //Stores all CachedReaders.
-        private final ReturningFunc<E> read;
+        private final Supplier<E> read;
         private int resetCacheCounter = 0;
         private final int resetCacheLoopInterval; //If this is set to n, the cache is reset every nth iteration.
         private E storedReadValue = null;
-        public CachedReader(ReturningFunc<E> read, int resetCacheLoopInterval){
+        public CachedReader(Supplier<E> read, int resetCacheLoopInterval){
             this.read=read;
             this.resetCacheLoopInterval = resetCacheLoopInterval;
             readers.add(this);
         }
         public E cachedRead(){
             if (Objects.isNull(storedReadValue) || resetCacheCounter%resetCacheLoopInterval==0){
-                storedReadValue=read.call();
+                storedReadValue=read.get();
             }
             return storedReadValue;
         }
@@ -161,24 +160,24 @@ public abstract class Components {
         private boolean newTarget=false; //Set to true when setTarget is called. Set to false after the end of each loop.
         private boolean newActuation=false; //Set to true when a method tagged with @Actuator is called. Set to false after the end of each loop.
         private double offset; //In case a part skips or something, this allows us to offset all the targets we set to compensate
-        public final ReturningFunc<Double> maxTargetFunc;
-        public final ReturningFunc<Double> minTargetFunc;
+        public final Supplier<Double> maxTargetFunc;
+        public final Supplier<Double> minTargetFunc;
         //Max and min targets. They are dynamic functions since the max position for an actuator may not be the same. An in-game extension limit may not apply based on the direction of the actuator, for example.
-        private ReturningFunc<Double> maxOffsetFunc = ()->(Double.POSITIVE_INFINITY);
-        private ReturningFunc<Double> minOffsetFunc = ()->(Double.NEGATIVE_INFINITY);
+        private Supplier<Double> maxOffsetFunc = ()->(Double.POSITIVE_INFINITY);
+        private Supplier<Double> minOffsetFunc = ()->(Double.NEGATIVE_INFINITY);
         //Max and min offsets. They are dynamic functions since the max position for an actuator may not be the same.
         private final double errorTol; //Error tolerance for when the actuator is commanded to a position
         private final double defaultMovementTimeout; //Default time waited when an actuator is commanded to a position before ending the  command.
         protected boolean actuationStateUnlocked = true; //If set to false, methods tagged with @Actuate should not have an effect; it locks the actuator in whatever power/position state it's in.
         private boolean targetStateUnlocked = true; //If set to false, the actuator's target cannot change.
         private final HashMap<String,Double> keyPositions = new HashMap<>(); //Stores key positions, like 'transferPosition,' etc.
-        private final HashMap<String,ReturningFunc<Double>> getCurrentPositions = new HashMap<>(); //Map of methods to get the current positions of each of the actuator's parts. (They may have slightly different positions each)
-        private final LambdaInterfaces.Procedure resetCurrentPositionCaches;
+        private final HashMap<String,Supplier<Double>> getCurrentPositions = new HashMap<>(); //Map of methods to get the current positions of each of the actuator's parts. (They may have slightly different positions each)
+        private final Runnable resetCurrentPositionCaches;
         protected ControlFuncRegister<?> funcRegister;
         private String currControlFuncKey;
         private String defaultControlKey;
         private boolean timeBasedLocalization = false; //Indicates whether the getCurrentPosition method of the actuator calculates the position based on time as opposed to an encoder, which is important to know.
-        private boolean isBroken = false; //Flag for whether the actuator is broken or not
+        public ArrayList<MoveToTargetCommand> currentRunningTargetCommands; //Stores the current running MoveToTargetActions.
         public class ControlFuncRegister<T extends Actuator<E>>{ //Registers control functions. Parametrized to the subclass of Actuator that is using it. The functions cannot be stored directly in the actuator because of generic type erasure and generic invariance. This approach is cleaner
             private final HashMap<String, List<ControlFunction<T>>> controlFuncsMap = new HashMap<>(); //Map with lists of control functions paired with names.
             @SafeVarargs
@@ -203,13 +202,13 @@ public abstract class Components {
         }
         public Actuator(String actuatorName, Class<E> type,
                         String[] partNames, Function<E, Double> getCurrentPosition, int currentPosPollingInterval,
-                        ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc,
+                        Supplier<Double> maxTargetFunc, Supplier<Double> minTargetFunc,
                         double errorTol, double defaultMovementTimeout){
             currentPosPollingInterval=Math.max(0,currentPosPollingInterval);
             this.name=actuatorName;
             this.partNames=partNames;
-            this.maxTargetFunc = ()->(maxTargetFunc.call()+offset);
-            this.minTargetFunc = ()->(minTargetFunc.call()+offset);
+            this.maxTargetFunc = ()->(maxTargetFunc.get()+offset);
+            this.minTargetFunc = ()->(minTargetFunc.get()+offset);
             this.defaultMovementTimeout = defaultMovementTimeout;
             this.errorTol=errorTol;
             ArrayList<CachedReader<Double>> readers = new ArrayList<>();
@@ -229,7 +228,7 @@ public abstract class Components {
         public String getName(){
             return name;
         }
-        public void setOffsetBoundFuncs(ReturningFunc<Double> maxFunc,ReturningFunc<Double> minFunc){
+        public void setOffsetBoundFuncs(Supplier<Double> maxFunc,Supplier<Double> minFunc){
             this.maxOffsetFunc=maxFunc;
             this.minOffsetFunc=minFunc;
         }
@@ -266,7 +265,7 @@ public abstract class Components {
         public void setTarget(double target){
             if (targetStateUnlocked){
                 target=target+offset;
-                target=Math.max(minTargetFunc.call(),Math.min(target, maxTargetFunc.call()));
+                target=Math.max(minTargetFunc.get(),Math.min(target, maxTargetFunc.get()));
                 if (target!=this.target) {
                     this.target = target;
                     this.instantTarget = target;
@@ -281,13 +280,13 @@ public abstract class Components {
             return target;
         }
         public void setInstantTarget(double instantTarget){
-            this.instantTarget=Math.max(minTargetFunc.call(),Math.min(instantTarget, maxTargetFunc.call()));
+            this.instantTarget=Math.max(minTargetFunc.get(),Math.min(instantTarget, maxTargetFunc.get()));
         }
         public double getInstantTarget(){
             return instantTarget;
         }
         public double getCurrentPosition(String name){ //Gets the position of a specific part
-            return Objects.requireNonNull(getCurrentPositions.get(name)).call();
+            return Objects.requireNonNull(getCurrentPositions.get(name)).get();
         }
         public double getCurrentPosition(){ //Gets the avg position of all synchronized parts
             double avg = 0;
@@ -297,7 +296,7 @@ public abstract class Components {
             return avg/getCurrentPositions.values().size();
         }
         public void setOffset(double offset){
-            offset=Math.max(minOffsetFunc.call(),Math.min(maxOffsetFunc.call(),offset));
+            offset=Math.max(minOffsetFunc.get(),Math.min(maxOffsetFunc.get(),offset));
             if (offset!=this.offset){
                 double oldOffset=this.offset;
                 this.offset=offset;
@@ -331,7 +330,7 @@ public abstract class Components {
             targetStateUnlocked=true;
         }
         protected void resetCurrentPositionCaches(){
-            resetCurrentPositionCaches.call();
+            resetCurrentPositionCaches.run();
         }
         public void setKeyPositions(String[] keyPositionKeys, double[] keyPositionValues){
             for (int i=0; i<keyPositionKeys.length; i++){
@@ -347,60 +346,43 @@ public abstract class Components {
         public String[] getPartNames(){
             return this.partNames;
         }
-        public void setAsBroken(){
-            this.isBroken=true;
-        }
-        public void setAsUnbroken(){
-            this.isBroken=false;
-        }
-        public boolean isBroken(){
-            return this.isBroken;
-        }
         public class MoveToTargetCommand extends CompoundCommand { //Command to set the target, then wait until the position of the actuator is a certain distance from the target, or until a set timeout
-            public MoveToTargetCommand(ReturningFunc<Double> targetFunc, double timeout){
+            public MoveToTargetCommand(Supplier<Double> targetFunc, double timeout){
                 group = new SequentialCommand(
-                        new InstantCommand(()-> setTarget(targetFunc.call())),
+                        new InstantCommand(()-> {setTarget(targetFunc.get()); currentRunningTargetCommands.add(this);}),
                         new SleepUntilTrue(
-                                ()->(isBroken||Math.abs(getCurrentPosition()-target)<errorTol),
+                                ()->(Math.abs(getCurrentPosition()-target)<errorTol),
                                 timeout
-                        )
+                        ),
+                        new InstantCommand(()-> currentRunningTargetCommands.remove(this))
                 );
             }
             public MoveToTargetCommand(double target, double timeout){
                 this(()->(target), timeout);
             }
-            public MoveToTargetCommand(ReturningFunc<Double> targetFunc){
+            public MoveToTargetCommand(Supplier<Double> targetFunc){
                 this(targetFunc, defaultMovementTimeout);
             }
             public MoveToTargetCommand(double target){
                 this(()->(target), defaultMovementTimeout);
             }
+            public void stopProcedure(){
+                currentRunningTargetCommands.remove(this);
+            }
         }
         public class SetOffsetCommand extends CompoundCommand { //Command to set the offset
-            public SetOffsetCommand(ReturningFunc<Double> offsetFunc, double timeout){
-                group = new SequentialCommand(
-                        new InstantCommand(()-> setOffset(offsetFunc.call())),
-                        new SleepUntilTrue(
-                                ()->(isBroken||Math.abs(getCurrentPosition()-target)<errorTol),
-                                timeout
-                        )
-                );
-            }
-            public SetOffsetCommand(double offset, double timeout){
-                this(()->(offset), timeout);
-            }
-            public SetOffsetCommand(ReturningFunc<Double> offsetFunc){
-                this(offsetFunc, defaultMovementTimeout);
+            public SetOffsetCommand(Supplier<Double> offsetFunc){
+                group = new InstantCommand(()-> setOffset(offsetFunc.get()));
             }
             public SetOffsetCommand(double offset){
-                this(()->(offset), defaultMovementTimeout);
+                this(()->(offset));
             }
         }
         public InstantCommand instantSetTargetCommand(double target){
             return new InstantCommand(()->setTarget(target));
         }
-        public InstantCommand instantSetTargetCommand(ReturningFunc<Double> targetFunc){
-            return new InstantCommand(()->setTarget(targetFunc.call()));
+        public InstantCommand instantSetTargetCommand(Supplier<Double> targetFunc){
+            return new InstantCommand(()->setTarget(targetFunc.get()));
         }
         public InstantCommand instantSetTargetCommand(String position){
             return new InstantCommand(()->setTarget(getPos(position)));
@@ -408,13 +390,13 @@ public abstract class Components {
         public MoveToTargetCommand moveToTargetCommand(double target){
             return new MoveToTargetCommand(target);
         }
-        public MoveToTargetCommand moveToTargetCommand(ReturningFunc<Double> targetFunc){
+        public MoveToTargetCommand moveToTargetCommand(Supplier<Double> targetFunc){
             return new MoveToTargetCommand(targetFunc);
         }
         public MoveToTargetCommand moveToTargetCommand(double target, double timeout){
             return new MoveToTargetCommand(target,timeout);
         }
-        public MoveToTargetCommand moveToTargetCommand(ReturningFunc<Double> targetFunc, double timeout){
+        public MoveToTargetCommand moveToTargetCommand(Supplier<Double> targetFunc, double timeout){
             return new MoveToTargetCommand(targetFunc);
         }
         public MoveToTargetCommand moveToTargetCommand(String position){
@@ -453,40 +435,40 @@ public abstract class Components {
         public SetOffsetCommand setOffsetCommand(double offset){
             return new SetOffsetCommand(offset);
         }
-        public SetOffsetCommand setOffsetCommand(ReturningFunc<Double> offsetFunc){
+        public SetOffsetCommand setOffsetCommand(Supplier<Double> offsetFunc){
             return new SetOffsetCommand(offsetFunc);
         }
-        public RunResettingLoop triggeredMoveToTargetCommand(Condition condition, double target){
+        public RunResettingLoop triggeredMoveToTargetCommand(Supplier<Boolean> condition, double target){
             return new RunResettingLoop(new PressTrigger(new IfThen(condition, new MoveToTargetCommand(target))));
         }
-        public RunResettingLoop triggeredMoveToTargetCommand(Condition condition, ReturningFunc<Double> targetFunc) {
+        public RunResettingLoop triggeredMoveToTargetCommand(Supplier<Boolean> condition, Supplier<Double> targetFunc) {
             return new RunResettingLoop(new PressTrigger(new IfThen(condition, moveToTargetCommand(targetFunc))));
         }
-        public RunResettingLoop triggeredMoveToTargetCommand(Condition condition, double target, double timeout){
+        public RunResettingLoop triggeredMoveToTargetCommand(Supplier<Boolean> condition, double target, double timeout){
             return new RunResettingLoop(new PressTrigger(new IfThen(condition, moveToTargetCommand(target,timeout))));
         }
-        public RunResettingLoop triggeredMoveToTargetCommand(Condition condition, ReturningFunc<Double> targetFunc, double timeout){
+        public RunResettingLoop triggeredMoveToTargetCommand(Supplier<Boolean> condition, Supplier<Double> targetFunc, double timeout){
             return new RunResettingLoop(new PressTrigger(new IfThen(condition, moveToTargetCommand(targetFunc,timeout))));
         }
-        public RunResettingLoop triggeredMoveToTargetCommand(Condition condition, String position){
+        public RunResettingLoop triggeredMoveToTargetCommand(Supplier<Boolean> condition, String position){
             return new RunResettingLoop(new PressTrigger(new IfThen(condition, moveToTargetCommand(position))));
         }
-        public RunResettingLoop triggeredMoveToTargetCommand(Condition condition, String position,double timeout){
+        public RunResettingLoop triggeredMoveToTargetCommand(Supplier<Boolean> condition, String position,double timeout){
             return new RunResettingLoop(new PressTrigger(new IfThen(condition, moveToTargetCommand(position,timeout))));
         }
-        public RunResettingLoop triggeredToggleTargetCommand(Condition condition, double target1, double target2){
+        public RunResettingLoop triggeredToggleTargetCommand(Supplier<Boolean> condition, double target1, double target2){
             return new RunResettingLoop(new PressTrigger(new IfThen(condition, toggleTargetCommand(target1,target2))));
         }
-        public RunResettingLoop triggeredDynamicTargetCommand(Condition upCondition, Condition downCondition, double change){
+        public RunResettingLoop triggeredDynamicTargetCommand(Supplier<Boolean> upCondition, Supplier<Boolean> downCondition, double change){
             return new RunResettingLoop(new ConditionalCommand(new IfThen(upCondition, moveToTargetCommand(()->(getTargetMinusOffset()+change))),new IfThen(downCondition, moveToTargetCommand(()->(getTargetMinusOffset()-change)))));
         }
-        public RunResettingLoop triggeredFSMTargetCommand(Condition upCondition, Condition downCondition, double...targets){
+        public RunResettingLoop triggeredFSMTargetCommand(Supplier<Boolean> upCondition, Supplier<Boolean> downCondition, double...targets){
             return new RunResettingLoop(new PressTrigger(new IfThen(upCondition, upwardFSMTargetCommand(targets)),new IfThen(downCondition, downwardFSMTargetCommand(targets))));
         }
-        public RunResettingLoop triggeredSetOffsetCommand(Condition condition, double offset){
+        public RunResettingLoop triggeredSetOffsetCommand(Supplier<Boolean> condition, double offset){
             return new RunResettingLoop(new PressTrigger(new IfThen(condition, new SetOffsetCommand(offset))));
         }
-        public RunResettingLoop triggeredDynamicOffsetCommand(Condition upCondition, Condition downCondition, double offsetChange){
+        public RunResettingLoop triggeredDynamicOffsetCommand(Supplier<Boolean> upCondition, Supplier<Boolean> downCondition, double offsetChange){
             return new RunResettingLoop(new ConditionalCommand(new IfThen(upCondition, setOffsetCommand(()->(offset+offsetChange))),new IfThen(downCondition, setOffsetCommand(()->(offset-offsetChange)))));
         }
         public InstantCommand switchControlCommand(String controlKey){
@@ -504,15 +486,20 @@ public abstract class Components {
         public InstantCommand unlockTargetCommand(){
             return new InstantCommand(this::unlockTargetState);
         }
+        public void stopTargetWait(){ //Stops running MoveToTargetActions so there is no wait for the actuator to reach target.
+            for (int i=0;i<currentRunningTargetCommands.size();i++){
+                currentRunningTargetCommands.get(0).stop();
+            }
+        }
     }
     //Each of the subclasses of Actuator will have some generic constructors and some constructors where information is preset.
     public abstract static class CRActuator<E extends DcMotorSimple> extends Actuator<E>{ //Type of Actuator that works for continuous rotation parts, like DcMotorEx and CRServo
         //private final HashMap<String,Double> powers = new HashMap<>(); //Stores the powers each of the parts are set to. Synchronized parts can have different powers because the load on one may be larger than on the other
-        private final ReturningFunc<Double> maxPowerFunc;
-        private final ReturningFunc<Double> minPowerFunc;
+        private final Supplier<Double> maxPowerFunc;
+        private final Supplier<Double> minPowerFunc;
         //Max and min power boundaries
         private final HashMap<String,Double> keyPowers = new HashMap<>(); //Stores key powers, like 'intakePower,' etc.
-        public CRActuator(String name, Class<E> type, String[] names, Function<E, Double> getCurrentPosition, int pollingRate, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, ReturningFunc<Double> maxPowerFunc, ReturningFunc<Double> minPowerFunc, double errorTol, double defaultTimeout,
+        public CRActuator(String name, Class<E> type, String[] names, Function<E, Double> getCurrentPosition, int pollingRate, Supplier<Double> maxTargetFunc, Supplier<Double> minTargetFunc, Supplier<Double> maxPowerFunc, Supplier<Double> minPowerFunc, double errorTol, double defaultTimeout,
                            DcMotorSimple.Direction[] directions) {
             super(name, type, names, getCurrentPosition, pollingRate, maxTargetFunc, minTargetFunc, errorTol, defaultTimeout);
             this.maxPowerFunc=maxPowerFunc;
@@ -522,11 +509,11 @@ public abstract class Components {
             }
             this.setTarget(0);
         }
-        public CRActuator(String name, Class<E> type, String[] names, Function<E, Double> getCurrentPosition, int pollingRate, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, double errorTol, double defaultTimeout,
+        public CRActuator(String name, Class<E> type, String[] names, Function<E, Double> getCurrentPosition, int pollingRate, Supplier<Double> maxTargetFunc, Supplier<Double> minTargetFunc, double errorTol, double defaultTimeout,
                           DcMotorSimple.Direction[] directions) {
             this(name,type,names,getCurrentPosition,pollingRate,maxTargetFunc,minTargetFunc,()->(1.0),()->(-1.0),errorTol,defaultTimeout,directions);
         }
-        public CRActuator(String name, Class<E> type, String[] names, ReturningFunc<Double> maxPowerFunc, ReturningFunc<Double> minPowerFunc, DcMotorSimple.Direction[] directions) { //For CRActuators that don't set targets and only use setPower, like drivetrain motors.
+        public CRActuator(String name, Class<E> type, String[] names, Supplier<Double> maxPowerFunc, Supplier<Double> minPowerFunc, DcMotorSimple.Direction[] directions) { //For CRActuators that don't set targets and only use setPower, like drivetrain motors.
             this(name,type,names,(E e)->(0.0), 1,()->(Double.POSITIVE_INFINITY),()->(Double.NEGATIVE_INFINITY),()->(1.0),()->(-1.0),0,0,directions);
         }
         public double getKeyPower(String key){
@@ -540,7 +527,7 @@ public abstract class Components {
         @Actuate
         public void setPower(double power, String name){ //Sets power to a specific part
             if (actuationStateUnlocked){
-                power=Math.max(Math.min(power, maxPowerFunc.call()), minPowerFunc.call());
+                power=Math.max(Math.min(power, maxPowerFunc.get()), minPowerFunc.get());
                 E part = parts.get(name);
                 assert part != null;
                 if (Math.abs(power-part.getPower())>0.03) {
@@ -572,14 +559,14 @@ public abstract class Components {
             return avg/partNames.length;
         }
         public class SetPowerCommand extends InstantCommand{ //Command to set the power of all synchronized parts
-            public SetPowerCommand(ReturningFunc<Double> powerFunc) {
-                super(()-> setPower(powerFunc.call()));
+            public SetPowerCommand(Supplier<Double> powerFunc) {
+                super(()-> setPower(powerFunc.get()));
             }
             public SetPowerCommand(double power) {
                 super(()-> setPower(power));
             }
         }
-        public SetPowerCommand setPowerCommand(ReturningFunc<Double> powerFunc){
+        public SetPowerCommand setPowerCommand(Supplier<Double> powerFunc){
             return new SetPowerCommand(powerFunc);
         }
         public SetPowerCommand setPowerCommand(double power){
@@ -615,22 +602,22 @@ public abstract class Components {
                 return getPart(partNames[0]).getPower();
             });
         }
-        public RunResettingLoop triggeredSetPowerCommand(Condition condition, ReturningFunc<Double> powerFunc){
+        public RunResettingLoop triggeredSetPowerCommand(Supplier<Boolean> condition, Supplier<Double> powerFunc){
             return new RunResettingLoop(new PressTrigger(new IfThen(condition, new SetPowerCommand(powerFunc))));
         }
-        public RunResettingLoop triggeredSetPowerCommand(Condition condition, String key){
+        public RunResettingLoop triggeredSetPowerCommand(Supplier<Boolean> condition, String key){
             return new RunResettingLoop(new PressTrigger(new IfThen(condition, new SetPowerCommand(getKeyPower(key)))));
         }
-        public RunResettingLoop triggeredSetPowerCommand(Condition condition, double power){
+        public RunResettingLoop triggeredSetPowerCommand(Supplier<Boolean> condition, double power){
             return new RunResettingLoop(new PressTrigger(new IfThen(condition, new SetPowerCommand(power))));
         }
-        public RunResettingLoop triggeredDynamicPowerCommand(Condition upCondition, Condition downCondition, double change){
+        public RunResettingLoop triggeredDynamicPowerCommand(Supplier<Boolean> upCondition, Supplier<Boolean> downCondition, double change){
             return new RunResettingLoop(new ConditionalCommand(new IfThen(upCondition, setPowerCommand(()->(getPart(partNames[0]).getPower()+change))),new IfThen(downCondition, setPowerCommand(()->(getPart(partNames[0]).getPower()-change)))));
         }
-        public RunResettingLoop triggeredTogglePowerCommand(Condition condition, double power1, double power2){
+        public RunResettingLoop triggeredTogglePowerCommand(Supplier<Boolean> condition, double power1, double power2){
             return new RunResettingLoop(new PressTrigger(new IfThen(condition, togglePowerCommand(power1,power2))));
         }
-        public RunResettingLoop triggeredFSMPowerCommand(Condition upCondition, Condition downCondition, double...powers){
+        public RunResettingLoop triggeredFSMPowerCommand(Supplier<Boolean> upCondition, Supplier<Boolean> downCondition, double...powers){
             return new RunResettingLoop(new PressTrigger(
                     new IfThen(upCondition, upwardFSMPowerCommand(powers)),
                     new IfThen(downCondition, downwardFSMPowerCommand(powers))
@@ -640,11 +627,11 @@ public abstract class Components {
     //Each of the bottom-level subclass constructors will accept getCurrentPosition functions and control functions, since those cater to a specific subclass.
     public static class BotMotor extends CRActuator<DcMotorEx> {
         private boolean isStallResetting;
-        private final HashMap<String, ReturningFunc<Double>> velocityReaders = new HashMap<>();
-        private final HashMap<String, ReturningFunc<Double>> currentReaders = new HashMap<>();
+        private final HashMap<String, Supplier<Double>> velocityReaders = new HashMap<>();
+        private final HashMap<String, Supplier<Double>> currentReaders = new HashMap<>();
 
         @SafeVarargs
-        public BotMotor(String name, String[] names, Function<DcMotorEx, Double> getCurrentPosition, int currentPosPollingInterval, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, ReturningFunc<Double> maxPowerFunc, ReturningFunc<Double> minPowerFunc, double errorTol, double defaultTimeout, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<BotMotor>>... controlFuncs) {
+        public BotMotor(String name, String[] names, Function<DcMotorEx, Double> getCurrentPosition, int currentPosPollingInterval, Supplier<Double> maxTargetFunc, Supplier<Double> minTargetFunc, Supplier<Double> maxPowerFunc, Supplier<Double> minPowerFunc, double errorTol, double defaultTimeout, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<BotMotor>>... controlFuncs) {
             super(name, DcMotorEx.class, names, getCurrentPosition, currentPosPollingInterval, maxTargetFunc, minTargetFunc, maxPowerFunc, minPowerFunc, errorTol, defaultTimeout, directions);
             for (String partName : getPartNames()) {
                 velocityReaders.put(partName, new CachedReader<>(Objects.requireNonNull(parts.get(name))::getVelocity, 1)::cachedRead);
@@ -658,7 +645,7 @@ public abstract class Components {
         }
 
         @SafeVarargs
-        public BotMotor(String name, String[] names, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, ReturningFunc<Double> maxPowerFunc, ReturningFunc<Double> minPowerFunc, double errorTol, double defaultTimeout, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<BotMotor>>... controlFuncs) {
+        public BotMotor(String name, String[] names, Supplier<Double> maxTargetFunc, Supplier<Double> minTargetFunc, Supplier<Double> maxPowerFunc, Supplier<Double> minPowerFunc, double errorTol, double defaultTimeout, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<BotMotor>>... controlFuncs) {
             super(name, DcMotorEx.class, names, (DcMotorEx motor) -> ((double) motor.getCurrentPosition()), 1, maxTargetFunc, minTargetFunc, maxPowerFunc, minPowerFunc, errorTol, defaultTimeout, directions);
             for (String partName : getPartNames()) {
                 velocityReaders.put(partName, new CachedReader<>(Objects.requireNonNull(parts.get(name))::getVelocity, 1)::cachedRead);
@@ -672,7 +659,7 @@ public abstract class Components {
         }
 
         @SafeVarargs
-        public BotMotor(String name, String[] names, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, double errorTol, double defaultTimeout, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<BotMotor>>... controlFuncs) {
+        public BotMotor(String name, String[] names, Supplier<Double> maxTargetFunc, Supplier<Double> minTargetFunc, double errorTol, double defaultTimeout, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<BotMotor>>... controlFuncs) {
             super(name, DcMotorEx.class, names, (DcMotorEx motor) -> ((double) motor.getCurrentPosition()), 1, maxTargetFunc, minTargetFunc, errorTol, defaultTimeout, directions);
             for (String partName : getPartNames()) {
                 velocityReaders.put(partName, new CachedReader<>(Objects.requireNonNull(parts.get(name))::getVelocity, 1)::cachedRead);
@@ -685,7 +672,7 @@ public abstract class Components {
             this.funcRegister = new ControlFuncRegister<BotMotor>(this, controlFuncKeys, controlFuncs);
         }
 
-        public BotMotor(String name, String[] names, ReturningFunc<Double> maxPowerFunc, ReturningFunc<Double> minPowerFunc, DcMotorSimple.Direction[] directions) {
+        public BotMotor(String name, String[] names, Supplier<Double> maxPowerFunc, Supplier<Double> minPowerFunc, DcMotorSimple.Direction[] directions) {
             super(name, DcMotorEx.class, names, maxPowerFunc, minPowerFunc, directions);
             for (String partName : getPartNames()) {
                 velocityReaders.put(partName, new CachedReader<>(Objects.requireNonNull(parts.get(name))::getVelocity, 1)::cachedRead);
@@ -699,7 +686,7 @@ public abstract class Components {
         }
 
         public double getVelocity(String name) {
-            return Objects.requireNonNull(velocityReaders.get(name)).call();
+            return Objects.requireNonNull(velocityReaders.get(name)).get();
         }
 
         public double getVelocity() { //Returns avg velocity of all parts
@@ -731,7 +718,7 @@ public abstract class Components {
         }
 
         public double getCurrentAmps(String partName) {
-            return Objects.requireNonNull(currentReaders.get(partName)).call();
+            return Objects.requireNonNull(currentReaders.get(partName)).get();
         }
 
         public double getCurrentAmps() {
@@ -784,7 +771,7 @@ public abstract class Components {
             return new StallResetCommand(resetPosition, stallVolts);
         }
 
-        public PressTrigger triggeredStallResetCommand(Condition condition, double resetPosition, double stallVolts) {
+        public PressTrigger triggeredStallResetCommand(Supplier<Boolean> condition, double resetPosition, double stallVolts) {
             return new PressTrigger(new IfThen(condition, stallResetCommand(resetPosition, stallVolts)));
         }
         public class SetPowerForDistance extends CompoundCommand{ //Makes the motor set a power until it travels a certain distance.
@@ -812,7 +799,7 @@ public abstract class Components {
         private final double range;
         private Function<Double, Double> setPositionConversion;
         @SafeVarargs
-        public BotServo(String name, String[] names, Function<Servo, Double> getCurrentPosition, int currentPosPollingInterval, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, double errorTol, double defaultTimeout, Servo.Direction[] directions, double range, //Degree range that servo is programmed to
+        public BotServo(String name, String[] names, Function<Servo, Double> getCurrentPosition, int currentPosPollingInterval, Supplier<Double> maxTargetFunc, Supplier<Double> minTargetFunc, double errorTol, double defaultTimeout, Servo.Direction[] directions, double range, //Degree range that servo is programmed to
                         double initialTarget, String[] controlFuncKeys, List<ControlFunction<BotServo>>... controlFuncs) {
             super(name, Servo.class, names, getCurrentPosition, currentPosPollingInterval, maxTargetFunc, minTargetFunc, errorTol, defaultTimeout);
             setTarget(initialTarget);
@@ -823,7 +810,7 @@ public abstract class Components {
             this.setPositionConversion=(Double pos)->pos/range;
             this.funcRegister=new ControlFuncRegister<BotServo>(this,controlFuncKeys, controlFuncs);
         }
-        public BotServo(String name, String[] names, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, double servoSpeedDPS, double defaultTimeout, Servo.Direction[] directions, double range, double initialTarget) {
+        public BotServo(String name, String[] names, Supplier<Double> maxTargetFunc, Supplier<Double> minTargetFunc, double servoSpeedDPS, double defaultTimeout, Servo.Direction[] directions, double range, double initialTarget) {
             this(name,names,new TimeBasedLocalizers.ServoTimeBasedLocalizer(servoSpeedDPS/range,initialTarget,range)::getCurrentPosition,1,maxTargetFunc,minTargetFunc,1.5,defaultTimeout,directions,range, initialTarget, new String[]{"setPos"}, new ArrayList<>(Collections.singleton(new ServoControl())));
             setTimeBasedLocalization(true);
         }
@@ -832,7 +819,7 @@ public abstract class Components {
         }
         @Actuate
         public void setPosition(double position){ //Accepts position in degrees
-            position=Math.max(minTargetFunc.call(),Math.min(position, maxTargetFunc.call()));
+            position=Math.max(minTargetFunc.get(),Math.min(position, maxTargetFunc.get()));
             if (actuationStateUnlocked && (Math.abs(currCommandedPos-position)>0.07||ignoreSetPosCaching)){
                 currCommandedPos=position;
                 for (Servo part:parts.values()){part.setPosition(setPositionConversion.apply(position));}
@@ -859,22 +846,22 @@ public abstract class Components {
     }
     public static class CRBotServo extends CRActuator<CRServo>{
         @SafeVarargs
-        public CRBotServo(String name, String[] names, Function<CRServo, Double> getCurrentPosition, int pollingRate,ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, ReturningFunc<Double> maxPowerFunc, ReturningFunc<Double> minPowerFunc, double errorTol, double defaultTimeout, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<CRBotServo>>... controlFuncs) {
+        public CRBotServo(String name, String[] names, Function<CRServo, Double> getCurrentPosition, int pollingRate,Supplier<Double> maxTargetFunc, Supplier<Double> minTargetFunc, Supplier<Double> maxPowerFunc, Supplier<Double> minPowerFunc, double errorTol, double defaultTimeout, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<CRBotServo>>... controlFuncs) {
             super(name, CRServo.class, names, getCurrentPosition, pollingRate, maxTargetFunc, minTargetFunc, maxPowerFunc, minPowerFunc, errorTol, defaultTimeout, directions);
             this.funcRegister=new ControlFuncRegister<CRBotServo>(this, controlFuncKeys, controlFuncs);
         }
         @SafeVarargs
-        public CRBotServo(String name, String[] names, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, ReturningFunc<Double> maxPowerFunc, ReturningFunc<Double> minPowerFunc, double servoSpeed, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<CRBotServo>>... controlFuncs) {
+        public CRBotServo(String name, String[] names, Supplier<Double> maxTargetFunc, Supplier<Double> minTargetFunc, Supplier<Double> maxPowerFunc, Supplier<Double> minPowerFunc, double servoSpeed, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<CRBotServo>>... controlFuncs) {
             super(name, CRServo.class, names, new TimeBasedLocalizers.CRTimeBasedLocalizer<CRServo>(servoSpeed)::getCurrentPosition, 1,maxTargetFunc, minTargetFunc, maxPowerFunc,minPowerFunc,0, Double.POSITIVE_INFINITY, directions);
             this.funcRegister=new ControlFuncRegister<CRBotServo>(this, controlFuncKeys, controlFuncs);
         }
         @SafeVarargs
-        public CRBotServo(String name, String[] names, Function<CRServo, Double> getCurrentPosition, int pollingRate, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, double errorTol, double defaultTimeout, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<CRBotServo>>... controlFuncs) {
+        public CRBotServo(String name, String[] names, Function<CRServo, Double> getCurrentPosition, int pollingRate, Supplier<Double> maxTargetFunc, Supplier<Double> minTargetFunc, double errorTol, double defaultTimeout, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<CRBotServo>>... controlFuncs) {
             super(name, CRServo.class, names, getCurrentPosition, pollingRate, maxTargetFunc, minTargetFunc, errorTol, defaultTimeout, directions);
             this.funcRegister=new ControlFuncRegister<CRBotServo>(this, controlFuncKeys, controlFuncs);
         }
         @SafeVarargs
-        public CRBotServo(String name, String[] names, ReturningFunc<Double> maxTargetFunc, ReturningFunc<Double> minTargetFunc, double servoSpeed, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<CRBotServo>>... controlFuncs) {
+        public CRBotServo(String name, String[] names, Supplier<Double> maxTargetFunc, Supplier<Double> minTargetFunc, double servoSpeed, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<CRBotServo>>... controlFuncs) {
             super(name, CRServo.class, names, new TimeBasedLocalizers.CRTimeBasedLocalizer<CRServo>(servoSpeed)::getCurrentPosition, 1,maxTargetFunc, minTargetFunc,0.05, Double.POSITIVE_INFINITY, directions);
             this.funcRegister=new ControlFuncRegister<CRBotServo>(this, controlFuncKeys, controlFuncs);
         }
