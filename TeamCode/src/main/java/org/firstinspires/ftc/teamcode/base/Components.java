@@ -791,6 +791,54 @@ public abstract class Components {
         public SetPowerForDistance setPowerForDistance(double power, double distance){
             return new SetPowerForDistance(power,distance);
         }
+        @Actuate
+        public void setVelocity(double velocity, String name){ //Sets power to a specific part
+            if (actuationStateUnlocked){
+                if (Math.abs(velocity-getVelocity(name))>1) {
+                    getPart(name).setVelocity(velocity);
+                    setNewActuation();
+                }
+            }
+        }
+        @Actuate
+        public void setVelocity(double power){ //Sets power to all synchronized parts at once
+            if (actuationStateUnlocked) {
+                for (String name:partNames) {
+                    setPower(power,name);
+                }
+            }
+        }
+        public class SetVelocityCommand extends InstantCommand{ //Command to set the power of all synchronized parts
+            public SetVelocityCommand(Supplier<Double> velFunc) {
+                super(()-> setPower(velFunc.get()));
+            }
+            public SetVelocityCommand(double velocity) {
+                super(()-> setVelocity(velocity));
+            }
+        }
+        public SetVelocityCommand setVelocityCommand(Supplier<Double> velocityFunc){
+            return new SetVelocityCommand(velocityFunc);
+        }
+        public SetVelocityCommand setVelocityCommand(double velocity){
+            return new SetVelocityCommand(velocity);
+        }
+        public SetVelocityCommand toggleVelocityCommand(double velocity1, double velocity2){
+            return new SetVelocityCommand(()->{
+                if (getPart(partNames[0]).getVelocity()==velocity1) return velocity2; else if (getPart(partNames[0]).getVelocity()==velocity2) return velocity1; else return getPart(partNames[0]).getVelocity();
+            });
+        }
+        public RunResettingLoop triggeredSetVelocityCommand(Supplier<Boolean> condition, Supplier<Double> velocityFunc){
+            return new RunResettingLoop(new PressTrigger(new IfThen(condition, new SetVelocityCommand(velocityFunc))));
+        }
+        public RunResettingLoop triggeredSetVelocityCommand(Supplier<Boolean> condition, double velocity){
+            return new RunResettingLoop(new PressTrigger(new IfThen(condition, new SetVelocityCommand(velocity))));
+        }
+        public RunResettingLoop triggeredDynamicVelocityCommand(Supplier<Boolean> upCondition, Supplier<Boolean> downCondition, double change){
+            return new RunResettingLoop(new ConditionalCommand(new IfThen(upCondition, setVelocityCommand(()->(getPart(partNames[0]).getVelocity()+change))),new IfThen(downCondition, setPowerCommand(()->(getPart(partNames[0]).getVelocity()-change)))));
+        }
+        public RunResettingLoop triggeredToggleVelocityCommand(Supplier<Boolean> condition, double velocity1, double velocity2){
+            return new RunResettingLoop(new PressTrigger(new IfThen(condition, toggleVelocityCommand(velocity1,velocity2))));
+        }
     }
     public static class BotServo extends Actuator<Servo>{
         private double currCommandedPos;

@@ -84,6 +84,16 @@ public abstract class Pedro {
             );
         }
     }
+    public static class PedroCurveCommand extends PedroCommand{
+        public PedroCurveCommand(double tension, boolean holdEnd, double heading, Pose...poses) {
+            super(
+                    (PathBuilder b)-> b
+                            .curveThrough(tension,poses)
+                            .setLinearHeadingInterpolation(follower.getPose().getHeading(),heading),
+                    holdEnd
+            );
+        }
+    }
     public static class PedroInstantCommand extends Commands.InstantCommand { //This action ends instantly and does not wait for the follower to reach its goal
         public PedroInstantCommand(Function<PathBuilder,PathBuilder> buildPath, boolean holdEnd) {
             super(()->follower.followPath(buildPath.apply(follower.pathBuilder()).build(),holdEnd));
@@ -120,6 +130,16 @@ public abstract class Pedro {
             super((PathBuilder b)-> b
                             .addPath(new BezierLine(follower::getPose,new Pose(follower.getPose().getX()+x,follower.getPose().getY()+y)))
                             .setLinearHeadingInterpolation(follower.getPose().getHeading(),follower.getPose().getHeading()+heading),
+                    holdEnd
+            );
+        }
+    }
+    public static class PedroInstantCurveCommand extends PedroInstantCommand{
+        public PedroInstantCurveCommand(double tension, boolean holdEnd, double heading, Pose...poses) {
+            super(
+                    (PathBuilder b)-> b
+                            .curveThrough(tension,poses)
+                            .setLinearHeadingInterpolation(follower.getPose().getHeading(),heading),
                     holdEnd
             );
         }
