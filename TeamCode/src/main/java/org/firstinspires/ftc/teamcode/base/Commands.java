@@ -1,22 +1,18 @@
 package org.firstinspires.ftc.teamcode.base;
 
+import static org.firstinspires.ftc.teamcode.base.Components.BotMotor;
 import static org.firstinspires.ftc.teamcode.base.Components.actuators;
 import static org.firstinspires.ftc.teamcode.base.Components.timer;
-
-import static org.firstinspires.ftc.teamcode.base.Components.BotMotor;
 import static org.firstinspires.ftc.teamcode.base.Components.updateTelemetry;
-
-import java.lang.Runnable;
-import java.util.function.Supplier;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Objects;
-
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public abstract class Commands { //Command-based system
@@ -1061,7 +1057,7 @@ public abstract class Commands { //Command-based system
                 if (actuator instanceof Components.CRActuator) {
                     Components.CRActuator<?> castedActuator = ((Components.CRActuator<?>) actuator);
                     for (String name:castedActuator.getPartNames()){
-                        castedActuator.setPower(castedActuator.getPower("name"),name);
+                        castedActuator.setPower(castedActuator.getPower(name),name);
                     }
                 }
                 //This ensures that old powers do not fall outside of any new max or min targets.

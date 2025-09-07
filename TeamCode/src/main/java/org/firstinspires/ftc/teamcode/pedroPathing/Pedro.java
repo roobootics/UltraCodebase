@@ -23,7 +23,7 @@ public abstract class Pedro {
     public static void createFollower(Pose startingPose){
         follower=Constants.createFollower(Components.getHardwareMap());
         follower.setStartingPose(startingPose);
-        follower.update();
+        Drawing.init();
     }
     public static Commands.RunResettingLoop updateCommand(){
         return new Commands.RunResettingLoop(new Commands.InstantCommand(follower::update));

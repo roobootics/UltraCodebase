@@ -13,15 +13,17 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
+import org.firstinspires.ftc.teamcode.base.Commands.Command;
+import org.firstinspires.ftc.teamcode.base.Commands.CompoundCommand;
+import org.firstinspires.ftc.teamcode.base.Commands.ConditionalCommand;
+import org.firstinspires.ftc.teamcode.base.Commands.IfThen;
+import org.firstinspires.ftc.teamcode.base.Commands.InstantCommand;
+import org.firstinspires.ftc.teamcode.base.Commands.PressTrigger;
+import org.firstinspires.ftc.teamcode.base.Commands.RunResettingLoop;
 import org.firstinspires.ftc.teamcode.base.Commands.SequentialCommand;
 import org.firstinspires.ftc.teamcode.base.Commands.SleepUntilTrue;
-import org.firstinspires.ftc.teamcode.base.Commands.InstantCommand;
-import org.firstinspires.ftc.teamcode.base.Commands.CompoundCommand;
-import org.firstinspires.ftc.teamcode.base.Commands.Command;
-import org.firstinspires.ftc.teamcode.base.Commands.ConditionalCommand;
-import org.firstinspires.ftc.teamcode.base.Commands.PressTrigger;
-import org.firstinspires.ftc.teamcode.base.Commands.IfThen;
-import org.firstinspires.ftc.teamcode.base.Commands.RunResettingLoop;
+import org.firstinspires.ftc.teamcode.presets.PresetControl.ServoControl;
+import org.firstinspires.ftc.teamcode.presets.TimeBasedLocalizers;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Target;
@@ -35,10 +37,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
-
-
-import org.firstinspires.ftc.teamcode.presets.PresetControl.ServoControl;
-import org.firstinspires.ftc.teamcode.presets.TimeBasedLocalizers;
 
 public abstract class Components {
     private static PartsConfig config;
@@ -177,7 +175,7 @@ public abstract class Components {
         private String currControlFuncKey;
         private String defaultControlKey;
         private boolean timeBasedLocalization = false; //Indicates whether the getCurrentPosition method of the actuator calculates the position based on time as opposed to an encoder, which is important to know.
-        public ArrayList<MoveToTargetCommand> currentRunningTargetCommands; //Stores the current running MoveToTargetActions.
+        public ArrayList<MoveToTargetCommand> currentRunningTargetCommands = new ArrayList<>(); //Stores the current running MoveToTargetActions.
         public class ControlFuncRegister<T extends Actuator<E>>{ //Registers control functions. Parametrized to the subclass of Actuator that is using it. The functions cannot be stored directly in the actuator because of generic type erasure and generic invariance. This approach is cleaner
             private final HashMap<String, List<ControlFunction<T>>> controlFuncsMap = new HashMap<>(); //Map with lists of control functions paired with names.
             @SafeVarargs
@@ -347,11 +345,12 @@ public abstract class Components {
             return this.partNames;
         }
         public class MoveToTargetCommand extends CompoundCommand { //Command to set the target, then wait until the position of the actuator is a certain distance from the target, or until a set timeout
+            private boolean stopCommand = false;
             public MoveToTargetCommand(Supplier<Double> targetFunc, double timeout){
                 group = new SequentialCommand(
-                        new InstantCommand(()-> {setTarget(targetFunc.get()); currentRunningTargetCommands.add(this);}),
+                        new InstantCommand(()-> {setTarget(targetFunc.get()); currentRunningTargetCommands.add(this); stopCommand=false;}),
                         new SleepUntilTrue(
-                                ()->(Math.abs(getCurrentPosition()-target)<errorTol),
+                                ()->(Math.abs(getCurrentPosition()-target)<errorTol || stopCommand),
                                 timeout
                         ),
                         new InstantCommand(()-> currentRunningTargetCommands.remove(this))
@@ -488,7 +487,7 @@ public abstract class Components {
         }
         public void stopTargetWait(){ //Stops running MoveToTargetActions so there is no wait for the actuator to reach target.
             for (int i=0;i<currentRunningTargetCommands.size();i++){
-                currentRunningTargetCommands.get(0).stop();
+                currentRunningTargetCommands.get(i).stopCommand=true;
             }
         }
     }
@@ -549,7 +548,7 @@ public abstract class Components {
             }
         }
         public double getPower(String name){
-            return getPart("name").getPower();
+            return getPart(name).getPower();
         }
         public double getPower(){
             double avg=0;
