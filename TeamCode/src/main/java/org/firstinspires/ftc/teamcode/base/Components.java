@@ -801,16 +801,16 @@ public abstract class Components {
             }
         }
         @Actuate
-        public void setVelocity(double power){ //Sets power to all synchronized parts at once
+        public void setVelocity(double velocity){ //Sets power to all synchronized parts at once
             if (actuationStateUnlocked) {
                 for (String name:partNames) {
-                    setPower(power,name);
+                    setVelocity(velocity,name);
                 }
             }
         }
         public class SetVelocityCommand extends InstantCommand{ //Command to set the power of all synchronized parts
             public SetVelocityCommand(Supplier<Double> velFunc) {
-                super(()-> setPower(velFunc.get()));
+                super(()-> setVelocity(velFunc.get()));
             }
             public SetVelocityCommand(double velocity) {
                 super(()-> setVelocity(velocity));
