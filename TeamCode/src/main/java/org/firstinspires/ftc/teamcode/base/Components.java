@@ -493,7 +493,6 @@ public abstract class Components {
     }
     //Each of the subclasses of Actuator will have some generic constructors and some constructors where information is preset.
     public abstract static class CRActuator<E extends DcMotorSimple> extends Actuator<E>{ //Type of Actuator that works for continuous rotation parts, like DcMotorEx and CRServo
-        //private final HashMap<String,Double> powers = new HashMap<>(); //Stores the powers each of the parts are set to. Synchronized parts can have different powers because the load on one may be larger than on the other
         private final Supplier<Double> maxPowerFunc;
         private final Supplier<Double> minPowerFunc;
         //Max and min power boundaries
@@ -628,6 +627,7 @@ public abstract class Components {
         private boolean isStallResetting;
         private final HashMap<String, Supplier<Double>> velocityReaders = new HashMap<>();
         private final HashMap<String, Supplier<Double>> currentReaders = new HashMap<>();
+        private final HashMap<String,Double> keyVelocities = new HashMap<>(); //Stores key velocities, like 'intakeVelocity,' etc.
 
         @SafeVarargs
         public BotMotor(String name, String[] names, Function<DcMotorEx, Double> getCurrentPosition, int currentPosPollingInterval, Supplier<Double> maxTargetFunc, Supplier<Double> minTargetFunc, Supplier<Double> maxPowerFunc, Supplier<Double> minPowerFunc, double errorTol, double defaultTimeout, DcMotorSimple.Direction[] directions, String[] controlFuncKeys, List<ControlFunction<BotMotor>>... controlFuncs) {
@@ -682,6 +682,15 @@ public abstract class Components {
                 part.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             }
             this.funcRegister = new ControlFuncRegister<BotMotor>(this, new String[]{}, new ArrayList<>());
+        }
+
+        public double getKeyVelocity(String key){
+            return Objects.requireNonNull(keyVelocities.get(key));
+        }
+        public void setKeyVelocities(String[] keyVelocityKeys, double[] keyVelocityValues){
+            for (int i=0; i<keyVelocityKeys.length; i++){
+                keyVelocities.put(keyVelocityKeys[i],keyVelocityValues[i]);
+            }
         }
 
         public double getVelocity(String name) {
@@ -822,6 +831,9 @@ public abstract class Components {
         public SetVelocityCommand setVelocityCommand(double velocity){
             return new SetVelocityCommand(velocity);
         }
+        public SetVelocityCommand setVelocityCommand(String key){
+            return new SetVelocityCommand(getKeyVelocity(key));
+        }
         public SetVelocityCommand toggleVelocityCommand(double velocity1, double velocity2){
             return new SetVelocityCommand(()->{
                 if (getPart(partNames[0]).getVelocity()==velocity1) return velocity2; else if (getPart(partNames[0]).getVelocity()==velocity2) return velocity1; else return getPart(partNames[0]).getVelocity();
@@ -832,6 +844,9 @@ public abstract class Components {
         }
         public RunResettingLoop triggeredSetVelocityCommand(Supplier<Boolean> condition, double velocity){
             return new RunResettingLoop(new PressTrigger(new IfThen(condition, new SetVelocityCommand(velocity))));
+        }
+        public RunResettingLoop triggeredSetVelocityCommand(Supplier<Boolean> condition, String key){
+            return new RunResettingLoop(new PressTrigger(new IfThen(condition, new SetVelocityCommand(getKeyVelocity(key)))));
         }
         public RunResettingLoop triggeredDynamicVelocityCommand(Supplier<Boolean> upCondition, Supplier<Boolean> downCondition, double change){
             return new RunResettingLoop(new ConditionalCommand(new IfThen(upCondition, setVelocityCommand(()->(getPart(partNames[0]).getVelocity()+change))),new IfThen(downCondition, setPowerCommand(()->(getPart(partNames[0]).getVelocity()-change)))));
