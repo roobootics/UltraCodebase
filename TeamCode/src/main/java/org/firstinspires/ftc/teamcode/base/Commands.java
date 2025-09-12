@@ -371,6 +371,9 @@ public abstract class Commands { //Command-based system
         public Command getCurrentAction(){
             return remainingCommands.get(0);
         }
+        public void skipAction(){
+            remainingCommands.remove(0);
+        }
     }
 
     public static class ParallelCommand extends Command{ //Runs commands in parallel
