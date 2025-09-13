@@ -158,6 +158,10 @@ public abstract class Components {
             this.name=name;
             this.direction=direction;
         }
+        public DcMotorExData(String name){
+            this.name=name;
+            this.direction=DcMotorSimple.Direction.FORWARD;
+        }
         public DcMotorEx getMotor(){
             DcMotorEx motor = Components.getHardwareMap().get(DcMotorEx.class,name);
             motor.setDirection(direction);
@@ -171,6 +175,10 @@ public abstract class Components {
             this.name=name;
             this.direction=direction;
         }
+        public ServoData(String name){
+            this.name=name;
+            this.direction=Servo.Direction.FORWARD;
+        }
         public Servo getServo(){
             Servo servo = Components.getHardwareMap().get(Servo.class,name);
             servo.setDirection(direction);
@@ -183,6 +191,10 @@ public abstract class Components {
         public CRServoData(String name, DcMotorSimple.Direction direction){
             this.name=name;
             this.direction=direction;
+        }
+        public CRServoData(String name){
+            this.name=name;
+            this.direction=DcMotorSimple.Direction.FORWARD;
         }
         public CRServo getCRServo(){
             CRServo crservo = Components.getHardwareMap().get(CRServo.class,name);
