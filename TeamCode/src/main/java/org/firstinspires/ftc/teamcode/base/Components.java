@@ -40,7 +40,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public abstract class Components {
-    private static PartsConfig config;
+    private static RobotConfig config;
     private static HardwareMap hardwareMap;
     public static HardwareMap getHardwareMap(){
         return hardwareMap;
@@ -84,7 +84,7 @@ public abstract class Components {
             }
         }
     }
-    public interface PartsConfig{
+    public interface RobotConfig {
         void init();
     }
     public static class CachedReader<E>{
@@ -121,7 +121,7 @@ public abstract class Components {
     }
     @Target(ElementType.METHOD)
     public @interface Actuate{} //Used to denote methods that actually move a part, like setPower or setPosition
-    public static void initialize(HardwareMap hardwareMap, Telemetry telemetry, PartsConfig config, boolean alwaysReInit){ //Method to initialize hardwareMap and telemetry.
+    public static void initialize(HardwareMap hardwareMap, Telemetry telemetry, RobotConfig config, boolean alwaysReInit){ //Method to initialize hardwareMap and telemetry.
         Components.hardwareMap=hardwareMap;
         Components.telemetry=telemetry;
         timer.reset(); //Static variables are preserved between runs, so timer needs to be reset
