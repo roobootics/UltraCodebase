@@ -12,50 +12,96 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 public abstract class PresetControl { //Holds control functions that actuators can use. Note that more control functions, like other types of motion profiling, can be coded and used.
+    public static class GenericPIDF{
+        private final double kP;
+        private final double kI;
+        private final double kD;
+        private final Function<Double,Double> fTerm;
+        private double integralSum;
+        private double previousLoop;
+        private double previousError;
+        private final ArrayList<Double> previousFiveLoopTimes = new ArrayList<>();
+        private final ArrayList<Double> previousFiveErrors = new ArrayList<>();
+        public GenericPIDF(double kP, double kI, double kD, Function<Double,Double> fTerm){ //Allows for a custom feedforward, such as one that takes acceleration into account
+            this.kP=kP;
+            this.kI=kI;
+            this.kD=kD;
+            this.fTerm=fTerm;
+        }
+        public GenericPIDF(double kP, double kI, double kD, double kF){
+            this(kP,kI,kD,(Double target)->kF*target);
+        }
+        public double getPIDFOutput(double target, double current){
+            double error=target-current;
+            double time=timer.time();
+            double loopTime=time-previousLoop;
+
+            integralSum+=loopTime*error;
+            previousFiveLoopTimes.add(loopTime);
+            previousFiveErrors.add(error);
+            if (previousFiveLoopTimes.size()>5){
+                previousFiveErrors.remove(0);
+                previousFiveLoopTimes.remove(0);
+            }
+
+            double pOutput=kP*error;
+            double iOutput=kI*integralSum;
+            double dOutput;
+            if (previousFiveErrors.size()==5){
+                double dtAvg=0;
+                for (double dt:previousFiveLoopTimes){
+                    dtAvg+=dt;
+                }
+                dtAvg=dtAvg/5;
+                dOutput=kD*(-previousFiveErrors.get(4)+8*previousFiveErrors.get(3)-8*previousFiveErrors.get(1)+previousFiveErrors.get(0))/(12*dtAvg);
+            } else{
+                dOutput=kD*(error-previousError)/loopTime;
+            }
+            double fOutput=fTerm.apply(target);
+
+            previousLoop=time;
+            previousError=error;
+
+            return pOutput+iOutput+dOutput+fOutput;
+        }
+        public void clearIntegral(){
+            integralSum=0;
+        }
+        public void clearKalmanFilter(){
+            previousLoop=timer.time();
+            previousError=0;
+            previousFiveLoopTimes.clear();
+            previousFiveErrors.clear();
+        }
+    }
     public static class PIDF<E extends CRActuator<?>> extends ControlFunction<E>{
+
+        private final ArrayList<PIDFConstants> constants;
+        private final ArrayList<GenericPIDF> PIDFs = new ArrayList<>();
         public static class PIDFConstants{ //Stores PIDF coefficients
             public double kP;
             public double kI;
             public double kD;
-            public double kF;
-            public Supplier<Double> feedForwardFunc; //From my understanding, feedforward is just a custom way to boost power based on a certain factor. For example, it could be used to counter gravity. feedForwardFunc returns a certain metric, and that will be multiplied by kF.
-            public PIDFConstants(double kP, double kI, double kD, double kF, Supplier<Double> feedForwardFunc){
+            public Function<Double,Double> feedForwardFunc;
+            public PIDFConstants(double kP, double kI, double kD, Function<Double,Double> feedForwardFunc){
                 this.kP=kP;
                 this.kI=kI;
                 this.kD=kD;
-                this.kF=kF;
                 this.feedForwardFunc = feedForwardFunc;
             }
-            public PIDFConstants(double kP, double kI, double kD){
+            public PIDFConstants(double kP, double kI, double kD, double kF){
                 this.kP=kP;
                 this.kI=kI;
                 this.kD=kD;
-                this.kF=0;
-                this.feedForwardFunc = ()->(0.0);
+                this.feedForwardFunc = (Double target)->(kF*target);
             }
         }
-        private double[] integralSums = new double[]{};
-        private double[] previousErrors = new double[]{};
-        private final ArrayList<ArrayList<Double>> previousFiveErrors = new ArrayList<>();
-        private final ArrayList<ArrayList<Double>> previousFiveLoopTimes = new ArrayList<>();
-        private double prevLoopTime;
-        private double integralIntervalTime;
-        private final ArrayList<PIDFConstants> constants;
-        private Supplier<Integer> shouldApplyDerivative = ()->(1);
         public PIDF(PIDFConstants...constants){ //The PIDF can accept multiple sets of coefficients, since if two synchronized CR components have different loads, they will need to produce different power outputs
             this.constants=new ArrayList<>(Arrays.asList(constants));
-        }
-        public PIDF(TrapezoidalMotionProfile<?> profile, PIDFConstants...constants){
-            this(constants);
-            shouldApplyDerivative=()->{
-                if (profile.getPhase().equals(TrapezoidalMotionProfile.Phase.IDLE) || profile.getPhase().equals(TrapezoidalMotionProfile.Phase.OFF) || profile.getPhase().equals(TrapezoidalMotionProfile.Phase.DECEL)){
-                    return 1;
-                }
-                else{return 0;}
-            };
         }
         @Override
         public void registerToParent(E actuator){
@@ -65,67 +111,26 @@ public abstract class PresetControl { //Holds control functions that actuators c
                     constants.add(constants.get(constants.size()-1));
                 }
             }
-            integralSums=new double[parentActuator.partNames.length];
-            previousErrors=new double[parentActuator.partNames.length];
-            for (Object o:actuator.getPartNames()){
-                previousFiveErrors.add(new ArrayList<>());
-                previousFiveLoopTimes.add(new ArrayList<>());
+            for (PIDFConstants constant:this.constants){
+                PIDFs.add(new GenericPIDF(constant.kP, constant.kI, constant.kD,constant.feedForwardFunc));
             }
         }
         @Override
-        protected void runProcedure() {
-            double time=timer.time();
-            if (isStart()){
-                prevLoopTime=time;
-                integralIntervalTime=time;
-                Arrays.setAll(previousErrors,(int i)->(0));
-                for (int i=0;i<previousFiveLoopTimes.size();i++){
-                    previousFiveLoopTimes.get(i).clear();
-                    previousFiveErrors.get(i).clear();
+        public void runProcedure(){
+            for (int i=0;i<parentActuator.getPartNames().length;i++){
+                GenericPIDF pidf = PIDFs.get(i);
+                if (isStart()){
+                    pidf.clearIntegral();
+                    pidf.clearKalmanFilter();
                 }
-            }
-            if (isStart()||parentActuator.isNewTarget()){
-                Arrays.setAll(integralSums,(int i)->(0.0));
-            }
-            for (int i=0;i<parentActuator.partNames.length;i++){
-                double currentPosition = parentActuator.getCurrentPosition(parentActuator.partNames[i]);
-                double error=parentActuator.getInstantTarget() - currentPosition;
-                if (time-integralIntervalTime>0.1){ //Limited integration history; once every 100 ms
-                    integralSums[i] += parentActuator.getTarget()-currentPosition;
-                    integralIntervalTime=time;
-                }
-                double dTerm;
-                if (previousFiveLoopTimes.get(i).size()<5){
-                    dTerm=shouldApplyDerivative.get() * ((error) - previousErrors[i])/(time-prevLoopTime);
-                }
-                else{
-                    ArrayList<Double> prev5Errors=previousFiveErrors.get(i);
-                    ArrayList<Double> prev5LoopTimes=previousFiveLoopTimes.get(i);
-                    double dtAvg=0;
-                    for (double dt:prev5LoopTimes){
-                        dtAvg+=dt;
-                    }
-                    dtAvg=dtAvg/5;
-                    dTerm=shouldApplyDerivative.get() * (-prev5Errors.get(4)+8*prev5Errors.get(3)-8*prev5Errors.get(1)+prev5Errors.get(0))/(12*dtAvg);
+                if (parentActuator.isNewTarget()){
+                    pidf.clearIntegral();
                 }
                 parentActuator.setPower(
-                        constants.get(i).kP * (error) +
-                                constants.get(i).kI * integralSums[i] * (time-prevLoopTime) +
-                                constants.get(i).kD * dTerm +
-                                constants.get(i).kF * constants.get(i).feedForwardFunc.get(),
-                        parentActuator.partNames[i]
+                        pidf.getPIDFOutput(parentActuator.getInstantTarget(), parentActuator.getCurrentPosition()),
+                        parentActuator.getPartNames()[i]
                 );
-                previousErrors[i]=error;
-                previousFiveLoopTimes.get(i).add(time-prevLoopTime);
-                if (previousFiveLoopTimes.get(i).size()>5){
-                    previousFiveLoopTimes.get(i).remove(0);
-                }
-                previousFiveErrors.get(i).add(error);
-                if (previousFiveErrors.get(i).size()>5){
-                    previousFiveErrors.get(i).remove(0);
-                }
             }
-            prevLoopTime=time;
         }
         @Override
         public void stopProcedure(){
