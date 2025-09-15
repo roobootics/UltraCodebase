@@ -7,7 +7,6 @@ import org.firstinspires.ftc.teamcode.base.Components.BotServo;
 import org.firstinspires.ftc.teamcode.base.Components.CRActuator;
 import org.firstinspires.ftc.teamcode.base.Components.ControlFunction;
 
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -71,7 +70,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
         public void clearIntegral(){
             integralSum=0;
         }
-        public void clearKalmanFilter(){
+        public void clearFivePointStencil(){
             previousLoop=timer.time();
             previousError=0;
             previousFiveLoopTimes.clear();
@@ -121,7 +120,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
                 GenericPIDF pidf = PIDFs.get(i);
                 if (isStart()){
                     pidf.clearIntegral();
-                    pidf.clearKalmanFilter();
+                    pidf.clearFivePointStencil();
                 }
                 if (parentActuator.isNewTarget()){
                     pidf.clearIntegral();
