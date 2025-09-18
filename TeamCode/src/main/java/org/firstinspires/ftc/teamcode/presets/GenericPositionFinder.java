@@ -59,11 +59,11 @@ public abstract class GenericPositionFinder extends LinearOpMode { //Used to fin
         executor.setWriteToTelemetry(this::updateTelemetry);
         executor.setCommands(
                 new Commands.RunResettingLoop(
-                        new Commands.PressTrigger(new Commands.IfThen(
+                        new Commands.PressCommand(new Commands.IfThen(
                                 ()->(gamepad1.dpad_left),
                                 new Commands.InstantCommand(this::shiftSelectionLeft)
                         )),
-                        new Commands.PressTrigger(new Commands.IfThen(
+                        new Commands.PressCommand(new Commands.IfThen(
                                 ()->(gamepad1.dpad_right),
                                 new Commands.InstantCommand(this::shiftSelectionRight)
                         )),
