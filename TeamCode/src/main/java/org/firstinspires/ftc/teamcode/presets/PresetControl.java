@@ -15,7 +15,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 public abstract class PresetControl { //Holds control functions that actuators can use. Note that more control functions, like other types of motion profiling, can be coded and used.
-    public static class GenericPIDF{
+    public static class GenericPIDF{ //A class that creates a PIDF controller for any purpose.
         private final double kP;
         private final double kI;
         private final double kD;
@@ -34,7 +34,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
         public GenericPIDF(double kP, double kI, double kD, double kF){
             this(kP,kI,kD,(Double target)->kF*target);
         }
-        public double getPIDFOutput(double target, double current){
+        public double getPIDFOutput(double target, double current){ //Give it the target value and the current value
             double error=target-current;
             double time=timer.time();
             double loopTime=time-previousLoop;
@@ -69,15 +69,15 @@ public abstract class PresetControl { //Holds control functions that actuators c
         }
         public void clearIntegral(){
             integralSum=0;
-        }
-        public void clearFivePointStencil(){
+        } //Clear the accumulating integral term. Do this when a global target is changed
+        public void clearFivePointStencil(){ //Clear the five point stencil for derivative approximation
             previousLoop=timer.time();
             previousError=0;
             previousFiveLoopTimes.clear();
             previousFiveErrors.clear();
         }
     }
-    public static class PIDF<E extends CRActuator<?>> extends ControlFunction<E>{
+    public static class PIDF<E extends CRActuator<?>> extends ControlFunction<E>{ //Position PIDF controller for CRActuators
 
         private final ArrayList<PIDFConstants> constants;
         private final ArrayList<GenericPIDF> PIDFs = new ArrayList<>();
@@ -136,7 +136,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
             parentActuator.setPower(0);
         }
     }
-    public static class SQUID<E extends CRActuator<?>> extends ControlFunction<E>{
+    public static class SQUID<E extends CRActuator<?>> extends ControlFunction<E>{ //SQUID controller for CRActuators
         public ArrayList<Double> kPs;
         public SQUID(double...kPs){
             Double[] tempKPs=new Double[kPs.length];
@@ -165,7 +165,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
             parentActuator.setPower(0);
         }
     }
-    public static class TrapezoidalMotionProfile<E extends Actuator<?>> extends ControlFunction<E>{
+    public static class TrapezoidalMotionProfile<E extends Actuator<?>> extends ControlFunction<E>{ //Trapezoidal motion profile for any actuator.
         public enum Phase{
             ACCEL,
             CRUISE,
@@ -304,7 +304,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
         public void stopProcedure() {
             phase= Phase.OFF; targetVelocity=0; instantTarget=0;
         }
-        public HashMap<String,Double> getProfileData(){
+        public HashMap<String,Double> getProfileData(){ //Returns data on the motion profile for debugging.
             HashMap<String,Double> data = new HashMap<>();
             data.put("currentMaxVelocity",currentMaxVelocity);
             data.put("accelDistance",accelDistance);
@@ -323,17 +323,17 @@ public abstract class PresetControl { //Holds control functions that actuators c
         }
         public Phase getPhase(){
             return phase;
-        }
+        } //Gives the phase that the motion profile is in.
     }
 
 
-    public static class ServoControl extends ControlFunction<BotServo>{ //Control function to get servos to their targets
+    public static class ServoControl extends ControlFunction<BotServo>{ //Control function to get servos to their targets by calling setPosition. Automatically given to BotServos depending on the constructor you call.
         @Override
         protected void runProcedure() {
             parentActuator.setPosition(parentActuator.getInstantTarget());
         }
     }
-    public static class CRBangBangControl<E extends CRActuator<?>> extends ControlFunction<E>{ //Likely will be used to get CRServos to their targets if they have no encoders with them
+    public static class CRBangBangControl<E extends CRActuator<?>> extends ControlFunction<E>{ //Likely will be used to get CRServos to their targets if they have no encoders with them. Sets a positive or negative power to the servo depending on where it is relative to the target. May create oscillations
         private final Supplier<Double> powerFunc; //This control function moves the CRActuator to the target at a given power, which can change. That is stored here.
         public CRBangBangControl(double power){
             this.powerFunc=()->(power);

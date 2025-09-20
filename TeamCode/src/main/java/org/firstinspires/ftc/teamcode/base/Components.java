@@ -105,7 +105,7 @@ public abstract class Components {
             }
             return storedReadValue;
         }
-        public void resetCache(){
+        public void resetCache(){ //Reset the cache so a new value is taken the next time cachedRead is called.
             resetCacheCounter=1;
             storedReadValue=null;
         }
@@ -120,7 +120,7 @@ public abstract class Components {
     }
     @Target(ElementType.METHOD)
     public @interface Actuate{} //Used to denote methods that actually move a part, like setPower or setPosition
-    public static void initialize(HardwareMap hardwareMap, Telemetry telemetry, RobotConfig config, boolean alwaysReInit){ //Method to initialize hardwareMap and telemetry.
+    public static void initialize(HardwareMap hardwareMap, Telemetry telemetry, RobotConfig config, boolean alwaysReInit){ //Method to initialize hardwareMap, telemetry, and a RobotConfig.
         Components.hardwareMap=hardwareMap;
         Components.telemetry=telemetry;
         timer.reset(); //Static variables are preserved between runs, so timer needs to be reset
@@ -133,7 +133,7 @@ public abstract class Components {
             config.init();
         }
     }
-    public abstract static class ControlFunction<E extends Actuator<?>>{ //The subclasses of this are methods that are called to control actuators and get them to the target, such as PID or motion profiles. Each function works with a specific type of actuator. Multiple can run at once
+    public abstract static class ControlFunction<E extends Actuator<?>>{ //The subclasses of this are methods that are called to control actuators and get them to the target, such as PID or motion profiles. Each function works with a specific type of actuator. Multiple can run at once.
         protected E parentActuator; //Each function has access to the actuator it runs on
         private boolean isStart; //Indicates if the control function has just started running
         public boolean isStart(){
@@ -148,9 +148,9 @@ public abstract class Components {
         }
         protected abstract void runProcedure(); //This method is where the control function does its job
         public void stopAndReset(){stopProcedure(); isStart=true;} //The function can stop running if the control mode of the actuator is switched
-        public void stopProcedure(){} //Takes care of anything that needs to occur when the control function stops
+        public void stopProcedure(){} //Takes care of anything that needs to occur when the control function stops running.
     }
-    public static class DcMotorExData{
+    public static class DcMotorExData{ //Stores the hardwareMap name and direction of a DcMotorEx
         private final String name;
         private final DcMotorSimple.Direction direction;
         public DcMotorExData(String name, DcMotorSimple.Direction direction){
@@ -167,7 +167,7 @@ public abstract class Components {
             return motor;
         }
     }
-    public static class ServoData{
+    public static class ServoData{ //Stores the hardwareMap name and direction of a Servo
         private final String name;
         private final Servo.Direction direction;
         public ServoData(String name, Servo.Direction direction){
@@ -184,7 +184,7 @@ public abstract class Components {
             return servo;
         }
     }
-    public static class CRServoData{
+    public static class CRServoData{ //Stores the hardwareMap name and direction of a CRServo
         private final String name;
         private final DcMotorSimple.Direction direction;
         public CRServoData(String name, DcMotorSimple.Direction direction){
@@ -201,14 +201,14 @@ public abstract class Components {
             return crservo;
         }
     }
-    public abstract static class Actuator<E extends HardwareDevice>{ //Actuators are enhanced hardware classes that have more state and functionality. Each Actuator instance is parametrized with a specific type, like DcMotorEx or Servo/.
+    public abstract static class Actuator<E extends HardwareDevice>{ //Actuators are enhanced hardware classes that have more state and functionality. Each Actuator instance is parametrized with a specific type, like DcMotorEx or Servo.
         private final String name;
         public final HashMap<String,E> parts = new HashMap<>(); public final String[] partNames; //Since two hardware devices can be synchronized on one mechanism, Actuators can have multiple inner parts, each referenced by its hardwareMap name
-        private double target;
-        private double instantTarget;
+        private double target; //Global target of the actuator
+        private double instantTarget; //The target the actuator will go for each loop. In feedforward systems like motion profiling, this does not match the global target, but builds toward it over time.
         private boolean newTarget=false; //Set to true when setTarget is called. Set to false after the end of each loop.
         private boolean newActuation=false; //Set to true when a method tagged with @Actuator is called. Set to false after the end of each loop.
-        private double offset; //In case a part skips or something, this allows us to offset all the targets we set to compensate
+        private double offset; //In case a part skips or something, this allows us to offset all the targets we set to compensate for the skip.
         public final Supplier<Double> maxTargetFunc;
         public final Supplier<Double> minTargetFunc;
         //Max and min targets. They are dynamic functions since the max position for an actuator may not be the same. An in-game extension limit may not apply based on the direction of the actuator, for example.
@@ -219,7 +219,7 @@ public abstract class Components {
         private final double defaultMovementTimeout; //Default time waited when an actuator is commanded to a position before ending the  command.
         protected boolean actuationStateUnlocked = true; //If set to false, methods tagged with @Actuate should not have an effect; it locks the actuator in whatever power/position state it's in.
         private boolean targetStateUnlocked = true; //If set to false, the actuator's target cannot change.
-        private final HashMap<String,Double> keyPositions = new HashMap<>(); //Stores key positions, like 'transferPosition,' etc.
+        private final HashMap<String,Double> keyPositions = new HashMap<>(); //Stores key positions, like 'transferPosition,' etc. The keys are labels for positions, and the values are the positions themselves. Useful because you only have to adjust the value corresponding to a certain position in one place.
         private final HashMap<String,Supplier<Double>> getCurrentPositions = new HashMap<>(); //Map of methods to get the current positions of each of the actuator's parts. (They may have slightly different positions each)
         private final Runnable resetCurrentPositionCaches;
         protected ControlFuncRegister<?> funcRegister;
@@ -326,10 +326,10 @@ public abstract class Components {
         }
         public double getTargetMinusOffset(){
             return target-offset;
-        }
+        } //Returns the target minus the offset
         public double getTarget(){
             return target;
-        }
+        } //Returns the target including the offset
         public void setInstantTarget(double instantTarget){
             this.instantTarget=Math.max(minTargetFunc.get(),Math.min(instantTarget, maxTargetFunc.get()));
         }
@@ -362,7 +362,7 @@ public abstract class Components {
         public double getPos(String key){ //Returns one of the key positions based on the inputted key
             return Objects.requireNonNull(keyPositions.get(key));
         }
-        public void switchControl(String key){
+        public void switchControl(String key){ // Switch control of actuator.
             for (ControlFunction<?> func: Objects.requireNonNull(this.funcRegister.controlFuncsMap.get(currControlFuncKey))){
                 func.stopAndReset();
             }
@@ -371,19 +371,21 @@ public abstract class Components {
         public void lockActuationState(){
             actuationStateUnlocked=false;
         }
+        //Prevent the actuator from actuating (so no new setPower calls, for example)
         public void unlockActuationState(){
             actuationStateUnlocked=true;
         }
         public void lockTargetState(){
             targetStateUnlocked=false;
         }
+        //Prevent the actuator from setting a new target
         public void unlockTargetState(){
             targetStateUnlocked=true;
         }
         protected void resetCurrentPositionCaches(){
             resetCurrentPositionCaches.run();
         }
-        public void setKeyPositions(String[] keyPositionKeys, double[] keyPositionValues){
+        public void setKeyPositions(String[] keyPositionKeys, double[] keyPositionValues){ //Set key targets. Input an array of labels and an array of values.
             for (int i=0; i<keyPositionKeys.length; i++){
                 keyPositions.put(keyPositionKeys[i],keyPositionValues[i]);
             }
@@ -393,10 +395,10 @@ public abstract class Components {
         }
         public Collection<E> getParts(){
             return this.parts.values();
-        }
+        } //Returns all HardwareDevices this actuator controls.
         public String[] getPartNames(){
             return this.partNames;
-        }
+        } //Returns the hardwareMap names of all HardwareDevices this actuator controls.
         public class MoveToTargetCommand extends CompoundCommand { //Command to set the target, then wait until the position of the actuator is a certain distance from the target, or until a set timeout
             public MoveToTargetCommand(Supplier<Double> targetFunc, double timeout){
                 group = new SequentialCommand(
@@ -425,22 +427,22 @@ public abstract class Components {
                 this(()->(offset));
             }
         }
-        public InstantCommand instantSetTargetCommand(double target){
+        public InstantCommand instantSetTargetCommand(double target){ //Action to set the target but without waiting for it to get there
             return new InstantCommand(()->setTarget(target));
         }
         public InstantCommand instantSetTargetCommand(Supplier<Double> targetFunc){
             return new InstantCommand(()->setTarget(targetFunc.get()));
         }
-        public InstantCommand instantSetTargetCommand(String position){
+        public InstantCommand instantSetTargetCommand(String position){ //Whenever a setTarget, setPower, or setVelocity method takes a String label, it will get the value corresponding to that label in the keyPositions/keyPowers/keyVelocities hashmap.
             return new InstantCommand(()->setTarget(getPos(position)));
         }
-        public MoveToTargetCommand moveToTargetCommand(double target){
+        public MoveToTargetCommand moveToTargetCommand(double target){ //Command to move to a target and wait for it to get there
             return new MoveToTargetCommand(target);
         }
         public MoveToTargetCommand moveToTargetCommand(Supplier<Double> targetFunc){
             return new MoveToTargetCommand(targetFunc);
         }
-        public MoveToTargetCommand moveToTargetCommand(double target, double timeout){
+        public MoveToTargetCommand moveToTargetCommand(double target, double timeout){ //Timeout refers to a timeout on which the action stops waiting for the device to reach the target
             return new MoveToTargetCommand(target,timeout);
         }
         public MoveToTargetCommand moveToTargetCommand(Supplier<Double> targetFunc, double timeout){
@@ -479,13 +481,13 @@ public abstract class Components {
                 return getTargetMinusOffset();
             });
         }
-        public SetOffsetCommand setOffsetCommand(double offset){
+        public SetOffsetCommand setOffsetCommand(double offset){ //Sets the offset of the actuator
             return new SetOffsetCommand(offset);
         }
         public SetOffsetCommand setOffsetCommand(Supplier<Double> offsetFunc){
             return new SetOffsetCommand(offsetFunc);
         }
-        public RunResettingLoop triggeredMoveToTargetCommand(Supplier<Boolean> condition, double target){
+        public RunResettingLoop triggeredMoveToTargetCommand(Supplier<Boolean> condition, double target){ //Command to move to a target on a button press
             return new RunResettingLoop(new PressCommand(new IfThen(condition, new MoveToTargetCommand(target))));
         }
         public RunResettingLoop triggeredMoveToTargetCommand(Supplier<Boolean> condition, Supplier<Double> targetFunc) {
@@ -503,13 +505,13 @@ public abstract class Components {
         public RunResettingLoop triggeredMoveToTargetCommand(Supplier<Boolean> condition, String position,double timeout){
             return new RunResettingLoop(new PressCommand(new IfThen(condition, moveToTargetCommand(position,timeout))));
         }
-        public RunResettingLoop triggeredToggleTargetCommand(Supplier<Boolean> condition, double target1, double target2){
+        public RunResettingLoop triggeredToggleTargetCommand(Supplier<Boolean> condition, double target1, double target2){ //Command to toggle between two targets on a button press
             return new RunResettingLoop(new PressCommand(new IfThen(condition, toggleTargetCommand(target1,target2))));
         }
-        public RunResettingLoop triggeredDynamicTargetCommand(Supplier<Boolean> upCondition, Supplier<Boolean> downCondition, double change){
+        public RunResettingLoop triggeredDynamicTargetCommand(Supplier<Boolean> upCondition, Supplier<Boolean> downCondition, double change){ //Command to increment/decrement the target by a certain amount per loop when up/down buttons are held
             return new RunResettingLoop(new ConditionalCommand(new IfThen(upCondition, moveToTargetCommand(()->(getTargetMinusOffset()+change))),new IfThen(downCondition, moveToTargetCommand(()->(getTargetMinusOffset()-change)))));
         }
-        public RunResettingLoop triggeredFSMTargetCommand(Supplier<Boolean> upCondition, Supplier<Boolean> downCondition, double...targets){
+        public RunResettingLoop triggeredFSMTargetCommand(Supplier<Boolean> upCondition, Supplier<Boolean> downCondition, double...targets){ //Command to scroll the target through a list of targets when up/down scrolling buttons are pressed
             return new RunResettingLoop(new PressCommand(new IfThen(upCondition, upwardFSMTargetCommand(targets)),new IfThen(downCondition, downwardFSMTargetCommand(targets))));
         }
         public RunResettingLoop triggeredSetOffsetCommand(Supplier<Boolean> condition, double offset){
@@ -602,6 +604,7 @@ public abstract class Components {
                 super(()-> setPower(power));
             }
         }
+        //The following methods for commands for setting powers are like their counterparts for setting targets.
         public SetPowerCommand setPowerCommand(Supplier<Double> powerFunc){
             return new SetPowerCommand(powerFunc);
         }
@@ -719,7 +722,7 @@ public abstract class Components {
             return avg / parts.size();
         }
 
-        public void resetEncoders() {
+        public void resetEncoders() { //Reset all motor encoders to 0
             for (DcMotorEx part : parts.values()) {
                 part.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
                 part.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -727,7 +730,7 @@ public abstract class Components {
             resetCurrentPositionCaches();
         }
 
-        public void setZeroPowerFloat() {
+        public void setZeroPowerFloat() { //Set ZeroPowerBehavior to float
             for (DcMotorEx part : parts.values()) {
                 part.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
             }
@@ -743,7 +746,7 @@ public abstract class Components {
             return Objects.requireNonNull(currentReaders.get(partName)).get();
         }
 
-        public double getCurrentAmps() {
+        public double getCurrentAmps() { //Gets the maximum current of any one DcMotorEx this actuator controls
             double maxCurrent = 0;
             for (String partName : getPartNames()) {
                 double current = getCurrentAmps(partName);
@@ -765,6 +768,8 @@ public abstract class Components {
         }
 
         public class StallResetCommand extends Command { //Stall resets encoders, and offsets the position if you want to reset at a non-zero position.
+            //The way stall resetting works is: you set power to the motor until it hits a hard stop. The motor will stall because it is trying to get past the hard stop but can't. We detect this stall and reset the motor to the position it should be at on the hard stop.
+            //Good for if a part skips on a motor.
             double resetPosition;
             double stallVolts;
 
@@ -793,7 +798,7 @@ public abstract class Components {
             return new StallResetCommand(resetPosition, stallVolts);
         }
 
-        public PressCommand triggeredStallResetCommand(Supplier<Boolean> condition, double resetPosition, double stallVolts) {
+        public PressCommand triggeredStallResetCommand(Supplier<Boolean> condition, double resetPosition, double stallVolts) { //Command to initiate a stall reset on a button press
             return new PressCommand(new IfThen(condition, stallResetCommand(resetPosition, stallVolts)));
         }
         public class SetPowerForDistance extends CompoundCommand{ //Makes the motor set a power until it travels a certain distance.
@@ -840,6 +845,7 @@ public abstract class Components {
                 super(()-> setVelocity(velocity));
             }
         }
+        //The following methods for commands for setting velocities are like their counterparts for setting targets.
         public SetVelocityCommand setVelocityCommand(Supplier<Double> velocityFunc){
             return new SetVelocityCommand(velocityFunc);
         }
@@ -872,8 +878,8 @@ public abstract class Components {
     }
     public static class BotServo extends Actuator<Servo>{
         private double currCommandedPos;
-        private boolean ignoreSetPosCaching = false;
-        private final double range;
+        private boolean ignoreSetPosCaching = false; //If this is true, then even if a commanded position is the same as its current commanded position, the actuator will call setPosition on the hardwareMap Servos it controls. Useful to counteract Axon nudge.
+        private final double range; //Stores the range of the servo positions (e.g. 0-180 degrees)
         private Function<Double, Double> setPositionConversion;
         @SafeVarargs
         public BotServo(String name, List<ServoData> servos, Function<Servo, Double> getCurrentPosition, int currentPosPollingInterval, Supplier<Double> maxTargetFunc, Supplier<Double> minTargetFunc, double errorTol, double defaultTimeout, double range, //Degree range that servo is programmed to
