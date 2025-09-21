@@ -10,6 +10,7 @@ import org.firstinspires.ftc.teamcode.base.Components.CRActuator;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 public abstract class PresetControl { //Holds control functions that actuators can use. Note that more control functions, like other types of motion profiling, can be coded and used.
@@ -176,6 +177,32 @@ public abstract class PresetControl { //Holds control functions that actuators c
                     output+=kFs[i]*system.getInstantReference(references[i]);
                 }
                 system.setOutput(system.getOutput(name)+output,name);
+            }
+        }
+    }
+    public static class ElevatorFeedforward<E extends CRActuator<?>> extends ControlFunc<E>{
+        public double kF;
+        public ElevatorFeedforward(double kG){
+            this.kF = kF;
+        }
+        @Override
+        protected void runProcedure() {
+            for (String name: parentActuator.getPartNames()){
+                system.setOutput(system.getOutput(name)+kF,name);
+            }
+        }
+    }
+    public static class ArmFeedforward<E extends CRActuator<?>> extends ControlFunc<E>{
+        public double kF;
+        public double referenceToRad;
+        public ArmFeedforward(double kF, double unitsPerRevolution){
+            this.kF = kF;
+            referenceToRad=(2*Math.PI)/unitsPerRevolution;
+        }
+        @Override
+        protected void runProcedure() {
+            for (String name: parentActuator.getPartNames()){
+                system.setOutput(kF*Math.cos(system.getOutput(name)*referenceToRad),name);
             }
         }
     }
