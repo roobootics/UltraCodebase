@@ -247,6 +247,9 @@ public abstract class Components {
             return isStart;
         }
         private void run(){
+            if (controlFuncs.isEmpty()){
+                return;
+            }
             outputs.replaceAll((r, v) -> 0.0);
             isNewGlobalReferences.replaceAll((r, v) -> false);
             for (String label:storedGlobalReferences.keySet()){
@@ -328,7 +331,7 @@ public abstract class Components {
         private final Runnable resetCurrentPositionCaches;
         private final HashMap<String, ControlSystem<? extends Actuator<E>>> controlSystemMap = new HashMap<>();
         private String currControlFuncKey;
-        private String defaultControlKey;
+        private final String defaultControlKey;
         private boolean timeBasedLocalization = false; //Indicates whether the getCurrentPosition method of the actuator calculates the position based on time as opposed to an encoder, which is important to know.
         @SafeVarargs
         public Actuator(String actuatorName, List<E> parts, Function<E, Double> getCurrentPosition, int currentPosPollingInterval,
@@ -359,6 +362,13 @@ public abstract class Components {
             };
             for (int i=0;i< controlFuncKeys.length;i++){
                 controlSystemMap.put(controlFuncKeys[i],controlFuncs[i]);
+            }
+            controlSystemMap.put("controlOff",new ControlSystem<>());
+            currControlFuncKey="controlOff";
+            if (controlFuncKeys.length>0){
+                defaultControlKey=controlFuncKeys[0];
+            } else{
+                defaultControlKey=currControlFuncKey;
             }
             actuators.put(name,this);
         }
