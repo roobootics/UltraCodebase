@@ -195,14 +195,16 @@ public abstract class PresetControl { //Holds control functions that actuators c
     public static class ArmFeedforward<E extends CRActuator<?>> extends ControlFunc<E>{
         public double kF;
         public double referenceToRad;
-        public ArmFeedforward(double kF, double unitsPerRevolution){
+        public double angleAtZero;
+        public ArmFeedforward(double kF, double unitsPerRevolution, double angleAtZero){
             this.kF = kF;
             referenceToRad=(2*Math.PI)/unitsPerRevolution;
+            this.angleAtZero=angleAtZero;
         }
         @Override
         protected void runProcedure() {
             for (String name: parentActuator.getPartNames()){
-                system.setOutput(kF*Math.cos(system.getOutput(name)*referenceToRad),name);
+                system.setOutput(kF*Math.cos(system.getOutput(name)*referenceToRad+angleAtZero),name);
             }
         }
     }
