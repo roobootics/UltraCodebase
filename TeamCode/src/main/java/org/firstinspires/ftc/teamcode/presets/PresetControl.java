@@ -2,15 +2,16 @@ package org.firstinspires.ftc.teamcode.presets;
 
 import static org.firstinspires.ftc.teamcode.base.Components.timer;
 
-import org.firstinspires.ftc.teamcode.base.Components.*;
 import org.firstinspires.ftc.teamcode.base.Components.Actuator;
+import org.firstinspires.ftc.teamcode.base.Components.BotMotor;
 import org.firstinspires.ftc.teamcode.base.Components.BotServo;
 import org.firstinspires.ftc.teamcode.base.Components.CRActuator;
+import org.firstinspires.ftc.teamcode.base.Components.ControlFunc;
+import org.firstinspires.ftc.teamcode.base.Components.ControlSystem;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Objects;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 public abstract class PresetControl { //Holds control functions that actuators can use. Note that more control functions, like other types of motion profiling, can be coded and used.
@@ -27,9 +28,6 @@ public abstract class PresetControl { //Holds control functions that actuators c
             this.kP=kP;
             this.kI=kI;
             this.kD=kD;
-        }
-        public GenericPID(double kP, double kI, double kD, double kF){
-            this(kP,kI,kD);
         }
         public double getPIDOutput(double target, double current, double velocity){ //Give it the target value and the current value
             double error=target-current;
@@ -108,14 +106,7 @@ public abstract class PresetControl { //Holds control functions that actuators c
                 if (system.isNewReference("targetPosition")){
                     PID.clearIntegral();
                 }
-                double output;
-                if (parentActuator instanceof BotMotor){
-                    BotMotor castedActuator = (BotMotor) parentActuator;
-                    output=PID.getPIDOutput(system.getInstantReference("targetPosition"), parentActuator.getCurrentPosition(name), castedActuator.getVelocity(name));
-                }
-                else{
-                    output=PID.getPIDOutput(system.getInstantReference("targetPosition"), parentActuator.getCurrentPosition(name));
-                }
+                double output=PID.getPIDOutput(system.getInstantReference("targetPosition"), parentActuator.getCurrentPosition(name));
                 system.setOutput(system.getOutput(name)+output,name);
             }
         }
