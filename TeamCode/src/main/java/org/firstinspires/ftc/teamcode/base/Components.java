@@ -722,7 +722,7 @@ public abstract class Components {
                 keyVelocities.put(keyVelocityKeys[i],keyVelocityValues[i]);
             }
         }
-        public void setVelocityFilter(Function<BotMotor,Double> velFilter){
+        public void setVelocityFilter(Function<BotMotor,Double> velFilter){ //Allows you to set a custom function, like a Kalman filter, to determine the velocity of the motor.
             velocityReader=new CachedReader<>(()->velFilter.apply(this),1)::cachedRead;
         }
         public double getVelocity() { //Get the motor's velocity
