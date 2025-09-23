@@ -1070,9 +1070,7 @@ public abstract class Commands { //Command-based system
                 actuator.setTarget(actuator.getTargetMinusOffset());
                 if (actuator instanceof Components.CRActuator) {
                     Components.CRActuator<?> castedActuator = ((Components.CRActuator<?>) actuator);
-                    for (String name:castedActuator.getPartNames()){
-                        castedActuator.setPower(castedActuator.getPower(name),name);
-                    }
+                    castedActuator.setPower(castedActuator.getPower());
                 }
                 //This ensures that old powers do not fall outside of any new max or min targets.
                 actuator.runControl();
