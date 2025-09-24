@@ -284,8 +284,8 @@ public abstract class Components {
         private boolean newTarget=false; //Set to true when setTarget is called. Set to false after the end of each loop.
         private boolean newActuation=false; //Set to true when a method tagged with @Actuator is called. Set to false after the end of each loop.
         private double offset; //In case a part skips or something, this allows us to offset all the targets we set to compensate for the skip.
-        public Supplier<Double> maxTargetFunc;
-        public Supplier<Double> minTargetFunc;
+        public Supplier<Double> maxTargetFunc = ()->Double.POSITIVE_INFINITY;
+        public Supplier<Double> minTargetFunc = ()->Double.NEGATIVE_INFINITY;
         //Max and min targets. They are dynamic functions since the max position for an actuator may not be the same. An in-game extension limit may not apply based on the direction of the actuator, for example.
         private Supplier<Double> maxOffsetFunc = ()->(Double.POSITIVE_INFINITY);
         private Supplier<Double> minOffsetFunc = ()->(Double.NEGATIVE_INFINITY);
@@ -566,8 +566,8 @@ public abstract class Components {
     }
     //Each of the subclasses of Actuator will have some generic constructors and some constructors where information is preset.
     public abstract static class CRActuator<E extends DcMotorSimple> extends Actuator<E>{ //Type of Actuator that works for continuous rotation parts, like DcMotorEx and CRServo
-        private Supplier<Double> maxPowerFunc;
-        private Supplier<Double> minPowerFunc;
+        private Supplier<Double> maxPowerFunc = ()->Double.POSITIVE_INFINITY;
+        private Supplier<Double> minPowerFunc = ()->Double.NEGATIVE_INFINITY;
         //Max and min power boundaries
         private final HashMap<String,Double> keyPowers = new HashMap<>(); //Stores key powers, like 'intakePower,' etc.
         @SafeVarargs
@@ -682,8 +682,8 @@ public abstract class Components {
         private Supplier<Double> velocityReader;
         private final Supplier<Double> currentReader;
         private final HashMap<String,Double> keyVelocities = new HashMap<>(); //Stores key velocities, like 'intakeVelocity,' etc.
-        private Supplier<Double> maxVelocityFunc;
-        private Supplier<Double> minVelocityFunc;
+        private Supplier<Double> maxVelocityFunc = ()->Double.POSITIVE_INFINITY;
+        private Supplier<Double> minVelocityFunc = ()->Double.NEGATIVE_INFINITY;
         @SafeVarargs
         public BotMotor(String name, DcMotorSimple.Direction direction, Function<DcMotorEx, Double> getCurrentPosition, int currentPosPollingInterval, double errorTol, double defaultTimeout, String[] controlFuncKeys, ControlSystem<BotMotor>... controlFuncs) {
             super(name,direction,getCurrentPosition, currentPosPollingInterval, errorTol, defaultTimeout,controlFuncKeys,controlFuncs);
