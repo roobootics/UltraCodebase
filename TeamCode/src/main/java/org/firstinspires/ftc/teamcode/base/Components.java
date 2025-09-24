@@ -870,11 +870,11 @@ public abstract class Components {
             }
         }
         @SafeVarargs
-        public CRBotServo(String name, DcMotorSimple.Direction direction, double servoSpeed, String[] controlFuncKeys, ControlSystem<CRBotServo>... controlFuncs) {
-            this(name, direction, new TimeBasedLocalizers.CRTimeBasedLocalizer<CRServo>(servoSpeed)::getCurrentPosition, 1,0, Double.POSITIVE_INFINITY,controlFuncKeys,controlFuncs);
+        public CRBotServo(String name, DcMotorSimple.Direction direction, double servoSpeedDPS, String[] controlFuncKeys, ControlSystem<CRBotServo>... controlFuncs) {
+            this(name, direction, new TimeBasedLocalizers.CRTimeBasedLocalizer<CRServo>(servoSpeedDPS)::getCurrentPosition, 1,0, Double.POSITIVE_INFINITY,controlFuncKeys,controlFuncs);
         }
-        public CRBotServo(String name, DcMotorSimple.Direction direction, double servoSpeed) {
-            this(name, direction, servoSpeed,new String[]{});
+        public CRBotServo(String name, DcMotorSimple.Direction direction, double servoSpeedDPS) {
+            this(name, direction, servoSpeedDPS,new String[]{});
         }
     }
 }
