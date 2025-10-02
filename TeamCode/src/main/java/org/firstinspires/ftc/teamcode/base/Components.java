@@ -52,7 +52,7 @@ public abstract class Components {
     public static void telemetryAddLine(String line){
         telemetryOutput.put(line,null);
     }
-    public static void updateTelemetry(){
+    static void updateTelemetry(){
         if (!prevTelemetryOutput.equals(telemetryOutput)){
             prevTelemetryOutput=new LinkedHashMap<>(telemetryOutput);
             for (String caption: telemetryOutput.keySet()){
@@ -132,7 +132,7 @@ public abstract class Components {
             config.init();
         }
     }
-    public abstract static class ControlFunc<E extends Actuator<?>>{ //Control functions extend this subclass/
+    public abstract static class ControlFunc<E extends Actuator<?>>{ //Control functions extend this subclass
         protected E parentActuator;
         protected ControlSystem<? extends E> system; //Each function has access to the system it's part of
         private void registerToSystem(ControlSystem<? extends E> system){
@@ -324,7 +324,7 @@ public abstract class Components {
             }
             actuators.put(name,this);
         }
-        public void setTargetBounds(Supplier<Double> maxTargetFunc, Supplier<Double> minTargetFunc){
+        public void setTargetBounds(Supplier<Double> maxTargetFunc, Supplier<Double> minTargetFunc){ //Sets the maximum and minimum target that can be set to the Actuator. They are functions because the maximum and minimum may change depending on other factors.
             this.maxTargetFunc = ()->(maxTargetFunc.get()+offset);
             this.minTargetFunc = ()->(minTargetFunc.get()+offset);
         }
